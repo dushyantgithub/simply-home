@@ -1,0 +1,30 @@
+# Add this file under a configured Home Assistant packages directory when the
+# live deployment is not managed by this repository.
+input_select:
+  simply_home_theme:
+    name: Simply Home Theme
+    options:
+      - Light
+      - Dark
+    initial: Light
+    icon: mdi:theme-light-dark
+
+automation:
+  - id: simply_home_theme_by_day_and_night
+    alias: Simply Home theme by day and night
+    description: Use the dark dashboard during the day and the light dashboard at night.
+    trigger:
+      - platform: homeassistant
+        event: start
+      - platform: sun
+        event: sunrise
+      - platform: sun
+        event: sunset
+    condition: []
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.simply_home_theme
+        data:
+          option: "{{ 'Dark' if is_state('sun.sun', 'above_horizon') else 'Light' }}"
+    mode: restart
