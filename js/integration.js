@@ -795,8 +795,8 @@ const initPageUrl = () => {
     return;
   }
   publishConfig("text", config)
-    .on("message", (topic, message) => {
-      if (topic === config.command_topic) {
+    .on("message", (topic, message, packet) => {
+      if (topic === config.command_topic && !packet.retain) {
         const url = message.toString();
         if (WEBVIEW.viewActive && url) {
           console.verbose("Set Page Url:", url);
