@@ -34,6 +34,112 @@ global.WEBVIEW = global.WEBVIEW || {
 };
 
 /**
+ * Hides Home Assistant's own navigation chrome on the dedicated wall panel.
+ * The dashboard remains editable in a regular browser by adding ?disable_km.
+ *
+ * @param {WebContentsView} view The webview displaying Home Assistant.
+ */
+const applyWallPanelKiosk = (view) => {
+  const url = view.webContents.getURL();
+  if (!url.includes("/wall-panel/") || url.includes("disable_km")) {
+    return;
+  }
+
+  const script = `
+    (() => {
+      const styleId = "simply-home-wall-panel-kiosk";
+      const selectors = [
+        "app-header",
+        "app-toolbar",
+        "ha-top-app-bar",
+        "ha-top-app-bar-fixed",
+        "ha-header-bar",
+        "ha-tabs",
+        "ha-md-tabs",
+        "ha-tab",
+        "md-tabs",
+        "md-primary-tab",
+        "ha-button-menu",
+        "ha-menu-button",
+        "[role='tablist']",
+        "[aria-label='Open dashboard menu']",
+        "[aria-label='Sidebar toggle']",
+        "#header",
+        "#drawer"
+      ].join(",");
+      const css = \`
+        :host {
+          --header-height: 0px !important;
+          --app-drawer-width: 0px !important;
+          --mdc-drawer-width: 0px !important;
+        }
+        app-header,
+        app-toolbar,
+        ha-top-app-bar,
+        ha-top-app-bar-fixed,
+        ha-header-bar,
+        ha-tabs,
+        ha-md-tabs,
+        ha-tab,
+        md-tabs,
+        md-primary-tab,
+        ha-button-menu,
+        ha-menu-button,
+        [role='tablist'],
+        [aria-label='Open dashboard menu'],
+        [aria-label='Sidebar toggle'],
+        #header,
+        #drawer {
+          display: none !important;
+          height: 0 !important;
+          min-height: 0 !important;
+        }
+        #view {
+          min-height: 100vh !important;
+          --header-height: 0px !important;
+          margin-top: 0 !important;
+          padding-top: 0 !important;
+          top: 0 !important;
+        }
+        ha-app-layout { padding-top: 0 !important; --header-height: 0px !important; }
+      \`;
+
+      const apply = (root = document) => {
+        if (!root.querySelector(\`#\${styleId}\`)) {
+          const style = document.createElement("style");
+          style.id = styleId;
+          style.textContent = css;
+          (root === document ? document.head : root).appendChild(style);
+        }
+        for (const element of root.querySelectorAll(selectors)) {
+          element.style.setProperty("display", "none", "important");
+          element.style.setProperty("height", "0", "important");
+          element.style.setProperty("min-height", "0", "important");
+        }
+        for (const element of root.querySelectorAll("#view, ha-app-layout")) {
+          element.style.setProperty("margin-top", "0", "important");
+          element.style.setProperty("padding-top", "0", "important");
+          element.style.setProperty("top", "0", "important");
+          element.style.setProperty("--header-height", "0px", "important");
+        }
+        for (const element of root.querySelectorAll("*")) {
+          if (element.shadowRoot) apply(element.shadowRoot);
+        }
+      };
+
+      apply();
+      if (!window.simplyHomeKioskTimer) {
+        window.simplyHomeKioskTimer = window.setInterval(apply, 1000);
+      }
+    })();
+  `;
+
+  view.webContents.executeJavaScript(script).catch((error) => {
+    console.warn(`webview.js: wall-panel-kiosk (${error.message})`);
+  });
+};
+
+/**
  * Initializes the webview with the provided arguments.
  *
  * @returns {bool} Returns true if the initialization was successful.
@@ -328,11 +434,15 @@ const updateView = () => {
       WEBVIEW.theme.set(value);
     }
   });
-  cookieStore("web-zoom").then((value) => {
-    if (value && value !== WEBVIEW.zoom.get()) {
-      WEBVIEW.zoom.set(value);
-    }
-  });
+  if (url.includes("/wall-panel/")) {
+    WEBVIEW.zoom.reset();
+  } else {
+    cookieStore("web-zoom").then((value) => {
+      if (value && value !== WEBVIEW.zoom.get()) {
+        WEBVIEW.zoom.set(value);
+      }
+    });
+  }
 
   // Update webview screenshot
   captureView(1000).then(() => {
@@ -737,6 +847,13 @@ const windowEvents = async () => {
     if (APP.exiting) {
       return;
     }
+    if (
+      process.platform === "linux" &&
+      WEBVIEW.display.height > WEBVIEW.display.width &&
+      ["Fullscreen", "Maximized"].includes(status)
+    ) {
+      status = "Framed";
+    }
     const apply = (func, ...args) => {
       if (APP.exiting) {
         return Promise.resolve();
@@ -800,6 +917,47 @@ const windowEvents = async () => {
   // Handle window resize events
   WEBVIEW.window.on("resize", resizeView);
   resizeView();
+
+  // Electron fullscreen can collapse a rotated Wayland surface to its minimum
+  // size. Keep portrait Linux panels as display-sized frameless windows.
+  if (process.platform === "linux" && WEBVIEW.display.height > WEBVIEW.display.width) {
+    let correctingPortraitBounds = false;
+    const correctPortraitBounds = async () => {
+      if (correctingPortraitBounds || APP.exiting) {
+        return;
+      }
+      correctingPortraitBounds = true;
+      try {
+        if (WEBVIEW.window.isFullScreen()) {
+          WEBVIEW.window.setFullScreen(false);
+          await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+        if (WEBVIEW.window.isMaximized()) {
+          WEBVIEW.window.unmaximize();
+          await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+        const bounds = WEBVIEW.window.getBounds();
+        if (
+          bounds.x !== 0 ||
+          bounds.y !== 0 ||
+          bounds.width !== WEBVIEW.display.width ||
+          bounds.height !== WEBVIEW.display.height
+        ) {
+          WEBVIEW.window.setBounds({
+            x: 0,
+            y: 0,
+            width: WEBVIEW.display.width,
+            height: WEBVIEW.display.height,
+          });
+        }
+        resizeView();
+      } finally {
+        correctingPortraitBounds = false;
+      }
+    };
+    correctPortraitBounds();
+    setInterval(correctPortraitBounds, 2000);
+  }
 
   // Handle global shortcut events
   globalShortcut.register("Control+Left", () => {
@@ -1056,9 +1214,9 @@ const viewEvents = async () => {
       return true;
     }
 
-    // Set window status to fullscreen
+    // Linux kiosk sessions already use a display-sized frameless window.
     if (i === 0 && !("app_debug" in ARGS)) {
-      WEBVIEW.window.setStatus("Fullscreen");
+      WEBVIEW.window.setStatus(process.platform === "linux" ? "Framed" : "Fullscreen");
     }
 
     // Hide loader and show first view
@@ -1099,11 +1257,13 @@ const viewEvents = async () => {
     view.webContents.on("dom-ready", () => {
       view.webContents.insertCSS("html, body { scrollbar-width: none !important; }");
       view.webContents.insertCSS("::-webkit-scrollbar { display: none !important; }");
+      applyWallPanelKiosk(view);
     });
 
     // Webview fully loaded
     view.webContents.on("did-finish-load", () => {
       console.debug(`webview.js: viewEvents(${i},did-finish-load)`);
+      applyWallPanelKiosk(view);
       if ("app_debug" in ARGS) {
         setTimeout(() => {
           view.webContents.openDevTools();
@@ -1216,12 +1376,16 @@ const appEvents = async () => {
   EVENTS.on("updateStatus", () => {
     const status = WEBVIEW.tracker.window.status;
     const visibility = hardware.getKeyboardVisibility();
+    const portraitLinux = process.platform === "linux" && WEBVIEW.display.height > WEBVIEW.display.width;
     if (visibility === "ON" && ["Fullscreen", "Minimized"].includes(status)) {
       hardware.setKeyboardVisibility("OFF");
     }
-    toggleStatus(["Framed", "Minimized"].includes(status) ? "ON" : "OFF");
+    toggleStatus(!portraitLinux && ["Framed", "Minimized"].includes(status) ? "ON" : "OFF");
   });
   EVENTS.on("updateKeyboard", () => {
+    if (!HARDWARE.support.keyboardVisibility) {
+      return;
+    }
     const status = WEBVIEW.tracker.window.status;
     const visibility = hardware.getKeyboardVisibility();
     if (visibility === "ON" && ["Fullscreen"].includes(status)) {

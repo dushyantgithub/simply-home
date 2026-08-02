@@ -413,8 +413,8 @@ const initKiosk = () => {
     return;
   }
   publishConfig("select", config)
-    .on("message", (topic, message) => {
-      if (topic === config.command_topic) {
+    .on("message", (topic, message, packet) => {
+      if (topic === config.command_topic && !packet.retain) {
         const status = message.toString();
         console.verbose("Set Kiosk Status:", status);
         hardware.setDisplayStatus("ON", () => {
