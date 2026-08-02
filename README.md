@@ -18,7 +18,34 @@ Simply Home combines two pieces:
 1. An Electron kiosk that keeps Home Assistant open on a dedicated Linux touchscreen, remembers the login, starts with the desktop session, and exposes optional panel controls through MQTT.
 2. A compact Home Assistant custom card designed for a 480 × 800 portrait wall panel, with home, device, security, weather, people-map, SpotifyPlus, and native Settings access.
 
-![Simply Home displaying a Home Assistant dashboard](img/display.png)
+## Wall-panel screens
+
+These screenshots were captured from the live Home Assistant wall-panel dashboard at its 480-pixel card width.
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="img/screens/home.jpg" alt="Simply Home wall-panel Home screen" width="360"><br>
+      <strong>Home</strong>
+    </td>
+    <td align="center">
+      <img src="img/screens/devices.jpg" alt="Simply Home wall-panel Devices screen" width="360"><br>
+      <strong>Devices</strong>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="img/screens/security.jpg" alt="Simply Home wall-panel Security screen" width="360"><br>
+      <strong>Security</strong>
+    </td>
+    <td align="center">
+      <img src="img/screens/night.jpg" alt="Simply Home wall-panel night and away screen" width="360"><br>
+      <strong>Night / away</strong>
+    </td>
+  </tr>
+</table>
+
+<sub>Home-screen map tiles © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> and © <a href="https://carto.com/attributions">CARTO</a>.</sub>
 
 ## What it includes
 
