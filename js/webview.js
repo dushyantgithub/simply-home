@@ -141,8 +141,10 @@ const init = async () => {
     icon: APP.icon,
     autoHideMenuBar: true,
     frame: !WEBVIEW.statusEnabled,
-    width: Math.floor(WEBVIEW.display.width * 0.85),
-    height: Math.floor(WEBVIEW.display.height * 0.75),
+    x: 0,
+    y: 0,
+    width: WEBVIEW.display.width,
+    height: WEBVIEW.display.height,
     minWidth: 136,
     minHeight: 136,
   });
