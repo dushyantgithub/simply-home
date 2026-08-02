@@ -676,7 +676,8 @@ class SimplyHomeDashboard extends HTMLElement {
   homeScreen() {
     const now = new Date();
     const hour = now.getHours();
-    const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    const greeting =
+      hour < 5 ? "Good night" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     const weather = this.state("weather.forecast_home");
     const temp = Math.round(Number(weather?.attributes?.temperature) || 0);
     const humidity = weather?.attributes?.humidity;
