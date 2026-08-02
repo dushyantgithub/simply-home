@@ -38,6 +38,9 @@ const LIGHT_ENTITIES = [
 const ALL_CONTROLLABLE = [
   ...LIGHT_ENTITIES,
   "switch.bedroom_aircon_socket_1",
+  "switch.bedroom_switch_switch_1",
+  "switch.bedroom_switch_switch_2",
+  "switch.bedroom_switch_switch_3",
   "switch.bedroom_extension_socket_1",
   "switch.bedroom_extension_socket_2",
   "switch.bedroom_extension_socket_3",
@@ -53,9 +56,12 @@ const ROOM_DATA = [
     color: COLORS.amber,
     entities: ["switch.hall_switch_switch_1", "switch.hall_switch_switch_2", "switch.hall_switch_switch_3"],
     devices: [
-      ["switch.hall_switch_switch_1", "Ceiling", "mdi:ceiling-light", COLORS.amber],
-      ["switch.hall_switch_switch_2", "Accent", "mdi:string-lights", COLORS.amber],
-      ["switch.hall_switch_switch_3", "TV", "mdi:television", COLORS.purple],
+      ["switch.hall_switch_switch_1", "Ceiling", "mdi:ceiling-light", COLORS.amber, "lights"],
+      ["switch.hall_switch_switch_2", "Accent", "mdi:string-lights", COLORS.amber, "lights"],
+      ["switch.hall_switch_switch_3", "TV power", "mdi:television", COLORS.purple, "media"],
+      ["camera.home_360", "Home 360", "mdi:cctv", COLORS.blue, "other", "more-info"],
+      ["switch.home_360_motion_alarm", "Motion alarm", "mdi:motion-sensor", COLORS.orange, "other"],
+      ["switch.home_360_privacy_mode", "Privacy", "mdi:eye-off", COLORS.purple, "other"],
     ],
   },
   {
@@ -64,6 +70,10 @@ const ROOM_DATA = [
     icon: "mdi:fridge-outline",
     color: "#00bcd4",
     entities: ["switch.kitchen_switch_switch_1", "switch.kitchen_switch_switch_2"],
+    devices: [
+      ["switch.kitchen_switch_switch_1", "Main light", "mdi:ceiling-light", "#00bcd4", "lights"],
+      ["switch.kitchen_switch_switch_2", "Counter light", "mdi:wall-sconce-flat", "#00bcd4", "lights"],
+    ],
   },
   {
     id: "dining",
@@ -71,6 +81,10 @@ const ROOM_DATA = [
     icon: "mdi:silverware-fork-knife",
     color: COLORS.muted,
     entities: ["switch.dining_room_switch_switch_1", "switch.dining_room_switch_switch_2"],
+    devices: [
+      ["switch.dining_room_switch_switch_1", "Main light", "mdi:ceiling-light", COLORS.amber, "lights"],
+      ["switch.dining_room_switch_switch_2", "Secondary", "mdi:wall-sconce-flat", COLORS.amber, "lights"],
+    ],
   },
   {
     id: "bedroom",
@@ -81,12 +95,23 @@ const ROOM_DATA = [
       "light.bedroom_tubelight",
       "switch.bedroom_aircon_socket_1",
       "switch.bedroom_switch_switch_1",
+      "switch.bedroom_switch_switch_2",
+      "switch.bedroom_switch_switch_3",
       "switch.bedroom_extension_socket_1",
+      "switch.bedroom_extension_socket_2",
+      "switch.bedroom_extension_socket_3",
+      "switch.bedroom_extension_socket_4",
     ],
     devices: [
-      ["switch.bedroom_aircon_socket_1", "Air conditioner", "mdi:air-conditioner", COLORS.blue],
-      ["light.bedroom_tubelight", "Bedside", "mdi:desk-lamp", COLORS.amber],
-      ["switch.bedroom_extension_socket_1", "Extension", "mdi:power-socket", COLORS.muted],
+      ["switch.bedroom_aircon_socket_1", "Air conditioner", "mdi:air-conditioner", COLORS.blue, "climate"],
+      ["light.bedroom_tubelight", "Tubelight", "mdi:ceiling-light", COLORS.amber, "lights"],
+      ["switch.bedroom_switch_switch_1", "Main light", "mdi:lightbulb-outline", COLORS.amber, "lights"],
+      ["switch.bedroom_switch_switch_2", "Fan", "mdi:ceiling-fan", COLORS.blue, "climate"],
+      ["switch.bedroom_switch_switch_3", "Wall switch 3", "mdi:light-switch", COLORS.amber, "lights"],
+      ["switch.bedroom_extension_socket_1", "Extension 1", "mdi:power-socket", COLORS.muted, "other"],
+      ["switch.bedroom_extension_socket_2", "Extension 2", "mdi:power-socket", COLORS.muted, "other"],
+      ["switch.bedroom_extension_socket_3", "Extension 3", "mdi:power-socket", COLORS.muted, "other"],
+      ["switch.bedroom_extension_socket_4", "Extension 4", "mdi:power-socket", COLORS.muted, "other"],
     ],
   },
   {
@@ -99,6 +124,14 @@ const ROOM_DATA = [
       "switch.gaming_room_switch_switch_1",
       "switch.gaming_room_switch_switch_2",
       "switch.gaming_room_switch_switch_3",
+      "switch.gaming_room_switch_switch_4",
+    ],
+    devices: [
+      ["light.gaming_room_tubelight", "Tubelight", "mdi:ceiling-light", COLORS.amber, "lights"],
+      ["switch.gaming_room_switch_switch_1", "Ceiling", "mdi:ceiling-light", COLORS.amber, "lights"],
+      ["switch.gaming_room_switch_switch_2", "Desk light", "mdi:desk-lamp", COLORS.amber, "lights"],
+      ["switch.gaming_room_switch_switch_3", "Gaming setup", "mdi:controller", COLORS.purple, "media"],
+      ["switch.gaming_room_switch_switch_4", "Auxiliary", "mdi:light-switch", COLORS.muted, "other"],
     ],
   },
   {
@@ -107,6 +140,7 @@ const ROOM_DATA = [
     icon: "mdi:shower",
     color: COLORS.muted,
     entities: ["switch.geyser_socket_1"],
+    devices: [["switch.geyser_socket_1", "Geyser", "mdi:water-boiler", COLORS.orange, "climate"]],
   },
 ];
 
@@ -118,7 +152,7 @@ class SimplyHomeDashboard extends HTMLElement {
     this._filter = "all";
     this._signature = "";
     this._nightDismissedUntil = 0;
-    this.shadowRoot.addEventListener("click", (event) => this.handleClick(event));
+    this._handleClick = (event) => this.handleClick(event);
   }
 
   setConfig(config) {
@@ -286,6 +320,7 @@ class SimplyHomeDashboard extends HTMLElement {
       .rooms::-webkit-scrollbar { display:none; }
       .room { flex:0 0 auto; border:1px solid ${COLORS.faint}; border-radius:16px; background:${COLORS.card}; overflow:hidden; }
       .room-head { width:100%; min-height:58px; padding:10px 14px; border:0; background:transparent; color:${COLORS.text}; display:flex; align-items:center; gap:11px; text-align:left; }
+      .room-expand { min-width:0; flex:1 1 0; align-self:stretch; padding:0; border:0; background:transparent; color:${COLORS.text}; display:flex; align-items:center; gap:11px; text-align:left; }
       .room-icon { width:36px; height:36px; flex:0 0 auto; border-radius:11px; display:flex; align-items:center; justify-content:center; }
       .room-icon ha-icon { width:20px; height:20px; }
       .room-copy { min-width:0; flex:1 1 0; }
@@ -295,12 +330,15 @@ class SimplyHomeDashboard extends HTMLElement {
       .toggle::after { content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:rgba(225,225,225,.55); transition:.18s ease; }
       .toggle.on::after { left:21px; background:${COLORS.bg}; }
       .chevron { width:22px; height:22px; color:rgba(225,225,225,.35); }
+      .chevron-button { width:22px; height:32px; flex:0 0 auto; padding:0; border:0; background:transparent; color:inherit; display:flex; align-items:center; justify-content:center; }
       .device-tiles { padding:0 12px 10px; display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
       .device-tile { height:58px; min-width:0; padding:3px; border-radius:12px; border:1px solid ${COLORS.faint}; background:rgba(225,225,225,.05); color:${COLORS.text}; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
       .device-tile ha-icon { width:22px; height:22px; }
       .device-name { max-width:100%; font-size:11px; line-height:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .device-state { font-size:10px; line-height:11px; color:rgba(225,225,225,.45); }
       .bedroom-details { padding:0 12px 10px; display:flex; flex-direction:column; gap:8px; }
+      .bedroom-device-grid { padding:0; grid-template-columns:repeat(4,1fr); }
+      .empty-filter { padding:40px 16px; color:rgba(225,225,225,.45); font-size:13px; text-align:center; }
       .climate-row { min-height:52px; padding:10px 12px; border-radius:12px; background:rgba(3,169,244,.12); border:1px solid rgba(3,169,244,.22); display:flex; align-items:center; gap:12px; }
       .climate-row > ha-icon { width:22px; height:22px; color:${COLORS.blue}; }
       .climate-copy { min-width:0; flex:1 1 0; }
@@ -383,6 +421,9 @@ class SimplyHomeDashboard extends HTMLElement {
             ? this.settingsScreen()
             : this.homeScreen();
     this.shadowRoot.innerHTML = `<style>${this.style()}</style><div class="panel">${content}</div>`;
+    this.shadowRoot
+      .querySelectorAll("[data-action]")
+      .forEach((element) => element.addEventListener("click", this._handleClick));
   }
 
   nav(active) {
@@ -477,42 +518,70 @@ class SimplyHomeDashboard extends HTMLElement {
 
   devicesScreen() {
     const active = ALL_CONTROLLABLE.filter((id) => this.isOn(id)).length;
+    const rooms = ROOM_DATA.map((room) => this.roomCard(room)).filter(Boolean);
     return `
       <header class="device-header"><div class="title-row"><div class="screen-title">Devices</div><div class="header-actions"><div class="active-count"><i></i>${active} active</div><button class="round-action">${this.icon("mdi:magnify")}</button></div></div><div class="filters">${this.filterButton("all", "mdi:shape", "All")}${this.filterButton("lights", "mdi:lightbulb-outline", "Lights")}${this.filterButton("climate", "mdi:thermostat", "Climate")}${this.filterButton("media", "mdi:play-box-outline", "Media")}</div></header>
-      <main class="rooms">${ROOM_DATA.map((room) => this.roomCard(room)).join("")}</main>${this.nav("devices")}`;
+      <main class="rooms">${rooms.length ? rooms.join("") : '<div class="empty-filter">No devices in this category</div>'}</main>${this.nav("devices")}`;
   }
 
   filterButton(id, icon, label) {
     return `<button class="filter ${this._filter === id ? "active" : ""}" data-action="filter" data-filter="${id}">${this.icon(icon)}<span>${label}</span></button>`;
   }
 
+  roomDevices(room) {
+    if (this._filter === "all") return room.devices;
+    return room.devices.filter((device) => device[4] === this._filter);
+  }
+
   roomCard(room) {
-    const onCount = room.entities.filter((id) => this.isOn(id)).length;
-    const availableCount = room.entities.filter((id) => this.available(id)).length;
+    const devices = this.roomDevices(room);
+    if (!devices.length) return "";
+    const visibleEntities = [...new Set(devices.map((device) => device[0]).filter(Boolean))];
+    const toggleEntities = this.roomToggleEntities(room);
+    const onCount = visibleEntities.filter((id) => this.isOn(id)).length;
+    const availableCount = visibleEntities.filter((id) => this.available(id)).length;
     const groupOn = onCount > 0;
     const expanded = this._expandedRooms.has(room.id);
     const meta =
-      availableCount === 0 ? "Devices unavailable" : onCount ? `${onCount} of ${room.entities.length} on` : "all off";
+      availableCount === 0
+        ? `${devices.length} devices unavailable`
+        : onCount
+          ? `${onCount} of ${devices.length} on`
+          : `${devices.length} devices · all off`;
     let details = "";
-    if (expanded && room.devices) {
+    if (expanded) {
       details =
         room.id === "bedroom"
-          ? this.bedroomDetails(room.devices)
-          : `<div class="device-tiles">${room.devices.map((device) => this.deviceTile(device)).join("")}</div>`;
+          ? this.bedroomDetails(devices)
+          : `<div class="device-tiles">${devices.map((device) => this.deviceTile(device)).join("")}</div>`;
     }
-    return `<section class="room"><div class="room-head" data-action="expand" data-room="${room.id}"><span class="room-icon" style="background:${room.color}25;color:${room.color}">${this.icon(room.icon)}</span><span class="room-copy"><span class="room-name">${room.name}</span><span class="room-meta">${meta}</span></span><button class="toggle ${groupOn ? "on" : ""}" style="${groupOn ? `background:${room.color}` : ""}" data-action="room-toggle" data-room="${room.id}" aria-label="Toggle ${room.name}"></button>${this.icon(expanded ? "mdi:chevron-up" : "mdi:chevron-down", "chevron")}</div>${details}</section>`;
+    return `<section class="room"><div class="room-head"><button class="room-expand" data-action="expand" data-room="${room.id}" aria-expanded="${expanded}"><span class="room-icon" style="background:${room.color}25;color:${room.color}">${this.icon(room.icon)}</span><span class="room-copy"><span class="room-name">${room.name}</span><span class="room-meta">${meta}</span></span></button>${toggleEntities.length ? `<button class="toggle ${groupOn ? "on" : ""}" style="${groupOn ? `background:${room.color}` : ""}" data-action="room-toggle" data-room="${room.id}" aria-label="Toggle ${room.name}"></button>` : ""}<button class="chevron-button" data-action="expand" data-room="${room.id}" aria-label="${expanded ? "Collapse" : "Expand"} ${room.name}">${this.icon(expanded ? "mdi:chevron-up" : "mdi:chevron-down", "chevron")}</button></div>${details}</section>`;
   }
 
-  deviceTile([entity, name, icon, color]) {
+  roomToggleEntities(room) {
+    const visibleEntities = new Set(
+      this.roomDevices(room)
+        .filter((device) => device[5] !== "more-info")
+        .map((device) => device[0]),
+    );
+    return room.entities.filter((entity) => visibleEntities.has(entity) && this.available(entity));
+  }
+
+  deviceTile([entity, name, icon, color, , action = "toggle"]) {
     const on = this.isOn(entity);
-    return `<button class="device-tile" style="${on ? `background:${color}1f;border-color:${color}40` : ""}" data-action="toggle" data-entity="${entity}">${this.icon(icon)}<span class="device-name">${name}</span><span class="device-state">${this.entityLabel(entity)}</span></button>`;
+    return `<button class="device-tile" style="${on ? `background:${color}1f;border-color:${color}40` : ""}" data-action="${action}" data-entity="${entity}">${this.icon(icon)}<span class="device-name">${name}</span><span class="device-state">${this.entityLabel(entity)}</span></button>`;
   }
 
   bedroomDetails(devices) {
-    return `<div class="bedroom-details"><div class="climate-row" data-action="toggle" data-entity="switch.bedroom_aircon_socket_1">${this.icon("mdi:air-conditioner")}<div class="climate-copy"><b>Air conditioner</b><span>${this.entityLabel("switch.bedroom_aircon_socket_1")} · ${this.number("sensor.bedroom_aircon_power").toFixed(1)} W</span></div><div class="climate-control"><button class="circle-mini">${this.icon("mdi:minus")}</button><span>Power</span><button class="circle-mini">${this.icon("mdi:plus")}</button></div></div><div class="device-tiles" style="grid-template-columns:repeat(2,1fr)">${devices
-      .slice(1)
-      .map((device) => this.deviceTile(device))
-      .join("")}</div></div>`;
+    const aircon = devices.find((device) => device[0] === "switch.bedroom_aircon_socket_1");
+    const otherDevices = devices.filter((device) => device !== aircon);
+    const airconRow = aircon
+      ? `<div class="climate-row" data-action="toggle" data-entity="switch.bedroom_aircon_socket_1">${this.icon("mdi:air-conditioner")}<div class="climate-copy"><b>Air conditioner</b><span>${this.entityLabel("switch.bedroom_aircon_socket_1")} · ${this.number("sensor.bedroom_aircon_power").toFixed(1)} W</span></div><div class="climate-control"><span>Power</span><span class="toggle ${this.isOn("switch.bedroom_aircon_socket_1") ? "on" : ""}" style="${this.isOn("switch.bedroom_aircon_socket_1") ? `background:${COLORS.blue}` : ""}"></span></div></div>`
+      : "";
+    const deviceGrid = otherDevices.length
+      ? `<div class="device-tiles bedroom-device-grid">${otherDevices.map((device) => this.deviceTile(device)).join("")}</div>`
+      : "";
+    return `<div class="bedroom-details">${airconRow}${deviceGrid}</div>`;
   }
 
   securityScreen() {
@@ -548,7 +617,9 @@ class SimplyHomeDashboard extends HTMLElement {
   }
 
   async handleClick(event) {
-    const target = event.composedPath().find((item) => item?.dataset?.action);
+    const target = event.currentTarget?.dataset?.action
+      ? event.currentTarget
+      : event.composedPath().find((item) => item?.dataset?.action);
     if (!target || !this._hass) return;
     event.stopPropagation();
     const action = target.dataset.action;
@@ -567,8 +638,10 @@ class SimplyHomeDashboard extends HTMLElement {
     }
     if (action === "room-toggle") {
       const room = ROOM_DATA.find((item) => item.id === target.dataset.room);
-      const turnOn = !room.entities.some((entity) => this.isOn(entity));
-      await this._hass.callService("homeassistant", turnOn ? "turn_on" : "turn_off", { entity_id: room.entities });
+      const entities = this.roomToggleEntities(room);
+      if (!entities.length) return;
+      const turnOn = !entities.some((entity) => this.isOn(entity));
+      await this._hass.callService("homeassistant", turnOn ? "turn_on" : "turn_off", { entity_id: entities });
       return;
     }
     if (action === "expand") {
