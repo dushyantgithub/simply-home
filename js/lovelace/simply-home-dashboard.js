@@ -56,12 +56,12 @@ const ROOM_DATA = [
     color: COLORS.amber,
     entities: ["switch.hall_switch_switch_1", "switch.hall_switch_switch_2", "switch.hall_switch_switch_3"],
     devices: [
-      ["switch.hall_switch_switch_1", "Ceiling", "mdi:ceiling-light", COLORS.amber, "lights"],
-      ["switch.hall_switch_switch_2", "Accent", "mdi:string-lights", COLORS.amber, "lights"],
-      ["switch.hall_switch_switch_3", "TV power", "mdi:television", COLORS.purple, "media"],
-      ["camera.home_360", "Home 360", "mdi:cctv", COLORS.blue, "other", "more-info"],
-      ["switch.home_360_motion_alarm", "Motion alarm", "mdi:motion-sensor", COLORS.orange, "other"],
-      ["switch.home_360_privacy_mode", "Privacy", "mdi:eye-off", COLORS.purple, "other"],
+      ["switch.hall_switch_switch_1", "mdi:ceiling-light", COLORS.amber, "lights"],
+      ["switch.hall_switch_switch_2", "mdi:string-lights", COLORS.amber, "lights"],
+      ["switch.hall_switch_switch_3", "mdi:television", COLORS.purple, "media"],
+      ["camera.home_360", "mdi:cctv", COLORS.blue, "other", "more-info"],
+      ["switch.home_360_motion_alarm", "mdi:motion-sensor", COLORS.orange, "other"],
+      ["switch.home_360_privacy_mode", "mdi:eye-off", COLORS.purple, "other"],
     ],
   },
   {
@@ -71,8 +71,8 @@ const ROOM_DATA = [
     color: "#00bcd4",
     entities: ["switch.kitchen_switch_switch_1", "switch.kitchen_switch_switch_2"],
     devices: [
-      ["switch.kitchen_switch_switch_1", "Main light", "mdi:ceiling-light", "#00bcd4", "lights"],
-      ["switch.kitchen_switch_switch_2", "Counter light", "mdi:wall-sconce-flat", "#00bcd4", "lights"],
+      ["switch.kitchen_switch_switch_1", "mdi:ceiling-light", "#00bcd4", "lights"],
+      ["switch.kitchen_switch_switch_2", "mdi:wall-sconce-flat", "#00bcd4", "lights"],
     ],
   },
   {
@@ -82,8 +82,8 @@ const ROOM_DATA = [
     color: COLORS.muted,
     entities: ["switch.dining_room_switch_switch_1", "switch.dining_room_switch_switch_2"],
     devices: [
-      ["switch.dining_room_switch_switch_1", "Main light", "mdi:ceiling-light", COLORS.amber, "lights"],
-      ["switch.dining_room_switch_switch_2", "Secondary", "mdi:wall-sconce-flat", COLORS.amber, "lights"],
+      ["switch.dining_room_switch_switch_1", "mdi:ceiling-light", COLORS.amber, "lights"],
+      ["switch.dining_room_switch_switch_2", "mdi:wall-sconce-flat", COLORS.amber, "lights"],
     ],
   },
   {
@@ -103,15 +103,15 @@ const ROOM_DATA = [
       "switch.bedroom_extension_socket_4",
     ],
     devices: [
-      ["switch.bedroom_aircon_socket_1", "Air conditioner", "mdi:air-conditioner", COLORS.blue, "climate"],
-      ["light.bedroom_tubelight", "Tubelight", "mdi:ceiling-light", COLORS.amber, "lights"],
-      ["switch.bedroom_switch_switch_1", "Main light", "mdi:lightbulb-outline", COLORS.amber, "lights"],
-      ["switch.bedroom_switch_switch_2", "Fan", "mdi:ceiling-fan", COLORS.blue, "climate"],
-      ["switch.bedroom_switch_switch_3", "Wall switch 3", "mdi:light-switch", COLORS.amber, "lights"],
-      ["switch.bedroom_extension_socket_1", "Extension 1", "mdi:power-socket", COLORS.muted, "other"],
-      ["switch.bedroom_extension_socket_2", "Extension 2", "mdi:power-socket", COLORS.muted, "other"],
-      ["switch.bedroom_extension_socket_3", "Extension 3", "mdi:power-socket", COLORS.muted, "other"],
-      ["switch.bedroom_extension_socket_4", "Extension 4", "mdi:power-socket", COLORS.muted, "other"],
+      ["switch.bedroom_aircon_socket_1", "mdi:air-conditioner", COLORS.blue, "climate"],
+      ["light.bedroom_tubelight", "mdi:ceiling-light", COLORS.amber, "lights"],
+      ["switch.bedroom_switch_switch_1", "mdi:lightbulb-outline", COLORS.amber, "lights"],
+      ["switch.bedroom_switch_switch_2", "mdi:ceiling-fan", COLORS.blue, "climate"],
+      ["switch.bedroom_switch_switch_3", "mdi:light-switch", COLORS.amber, "lights"],
+      ["switch.bedroom_extension_socket_1", "mdi:power-socket", COLORS.muted, "other"],
+      ["switch.bedroom_extension_socket_2", "mdi:power-socket", COLORS.muted, "other"],
+      ["switch.bedroom_extension_socket_3", "mdi:power-socket", COLORS.muted, "other"],
+      ["switch.bedroom_extension_socket_4", "mdi:power-socket", COLORS.muted, "other"],
     ],
   },
   {
@@ -127,11 +127,11 @@ const ROOM_DATA = [
       "switch.gaming_room_switch_switch_4",
     ],
     devices: [
-      ["light.gaming_room_tubelight", "Tubelight", "mdi:ceiling-light", COLORS.amber, "lights"],
-      ["switch.gaming_room_switch_switch_1", "Ceiling", "mdi:ceiling-light", COLORS.amber, "lights"],
-      ["switch.gaming_room_switch_switch_2", "Desk light", "mdi:desk-lamp", COLORS.amber, "lights"],
-      ["switch.gaming_room_switch_switch_3", "Gaming setup", "mdi:controller", COLORS.purple, "media"],
-      ["switch.gaming_room_switch_switch_4", "Auxiliary", "mdi:light-switch", COLORS.muted, "other"],
+      ["light.gaming_room_tubelight", "mdi:ceiling-light", COLORS.amber, "lights"],
+      ["switch.gaming_room_switch_switch_1", "mdi:ceiling-light", COLORS.amber, "lights"],
+      ["switch.gaming_room_switch_switch_2", "mdi:desk-lamp", COLORS.amber, "lights"],
+      ["switch.gaming_room_switch_switch_3", "mdi:controller", COLORS.purple, "media"],
+      ["switch.gaming_room_switch_switch_4", "mdi:light-switch", COLORS.muted, "other"],
     ],
   },
   {
@@ -140,7 +140,7 @@ const ROOM_DATA = [
     icon: "mdi:shower",
     color: COLORS.muted,
     entities: ["switch.geyser_socket_1"],
-    devices: [["switch.geyser_socket_1", "Geyser", "mdi:water-boiler", COLORS.orange, "climate"]],
+    devices: [["switch.geyser_socket_1", "mdi:water-boiler", COLORS.orange, "climate"]],
   },
 ];
 
@@ -203,6 +203,16 @@ class SimplyHomeDashboard extends HTMLElement {
     if (state === "on") return "On";
     if (state === "off") return "Off";
     return state.charAt(0).toUpperCase() + state.slice(1);
+  }
+
+  entityName(entityId) {
+    const friendlyName = this.state(entityId)?.attributes?.friendly_name;
+    if (friendlyName) return friendlyName;
+    return entityId
+      .split(".")
+      .pop()
+      .replaceAll("_", " ")
+      .replace(/\b\w/g, (character) => character.toUpperCase());
   }
 
   number(entityId) {
@@ -312,17 +322,19 @@ class SimplyHomeDashboard extends HTMLElement {
       .active-count i { width:7px; height:7px; border-radius:50%; background:${COLORS.amber}; }
       .round-action { width:38px; height:38px; border:1px solid ${COLORS.faint}; border-radius:50%; background:${COLORS.card}; color:rgba(225,225,225,.6); display:flex; align-items:center; justify-content:center; }
       .round-action ha-icon { width:21px; height:21px; }
-      .filters { display:flex; gap:8px; overflow:hidden; }
-      .filter { height:34px; padding:0 14px; border-radius:17px; border:1px solid ${COLORS.faint}; background:${COLORS.card}; color:rgba(225,225,225,.7); display:flex; align-items:center; gap:6px; font-size:13px; white-space:nowrap; }
+      .filters { display:flex; align-items:center; gap:8px; overflow:hidden; }
+      .filter { height:34px; padding:0 13px; border-radius:17px; border:1px solid ${COLORS.faint}; background:${COLORS.card}; color:rgba(225,225,225,.7); display:inline-flex; align-items:center; justify-content:center; gap:7px; font-size:13px; line-height:1; white-space:nowrap; }
       .filter.active { background:${COLORS.blue}; color:#0c0d0f; border-color:${COLORS.blue}; font-weight:500; }
-      .filter ha-icon { width:16px; height:16px; }
+      .filter-icon { width:18px; height:18px; flex:0 0 18px; display:grid; place-items:center; line-height:0; }
+      .filter-icon ha-icon { width:16px; height:16px; display:block; --mdc-icon-size:16px; }
+      .filter-label { display:block; line-height:16px; }
       .rooms { position:absolute; inset:104px 0 0; padding:4px 16px 96px; overflow-y:auto; scrollbar-width:none; display:flex; flex-direction:column; gap:10px; }
       .rooms::-webkit-scrollbar { display:none; }
       .room { flex:0 0 auto; border:1px solid ${COLORS.faint}; border-radius:16px; background:${COLORS.card}; overflow:hidden; }
       .room-head { width:100%; min-height:58px; padding:10px 14px; border:0; background:transparent; color:${COLORS.text}; display:flex; align-items:center; gap:11px; text-align:left; }
       .room-expand { min-width:0; flex:1 1 0; align-self:stretch; padding:0; border:0; background:transparent; color:${COLORS.text}; display:flex; align-items:center; gap:11px; text-align:left; }
-      .room-icon { width:36px; height:36px; flex:0 0 auto; border-radius:11px; display:flex; align-items:center; justify-content:center; }
-      .room-icon ha-icon { width:20px; height:20px; }
+      .room-icon { width:36px; height:36px; flex:0 0 36px; border-radius:11px; display:grid; place-items:center; line-height:0; }
+      .room-icon ha-icon { width:20px; height:20px; display:block; --mdc-icon-size:20px; }
       .room-copy { min-width:0; flex:1 1 0; }
       .room-name { display:block; font-size:15px; line-height:18px; font-weight:500; }
       .room-meta { display:block; margin-top:2px; font-size:12px; line-height:15px; color:rgba(225,225,225,.45); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -331,13 +343,14 @@ class SimplyHomeDashboard extends HTMLElement {
       .toggle.on::after { left:21px; background:${COLORS.bg}; }
       .chevron { width:22px; height:22px; color:rgba(225,225,225,.35); }
       .chevron-button { width:22px; height:32px; flex:0 0 auto; padding:0; border:0; background:transparent; color:inherit; display:flex; align-items:center; justify-content:center; }
-      .device-tiles { padding:0 12px 10px; display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-      .device-tile { height:58px; min-width:0; padding:3px; border-radius:12px; border:1px solid ${COLORS.faint}; background:rgba(225,225,225,.05); color:${COLORS.text}; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
-      .device-tile ha-icon { width:22px; height:22px; }
-      .device-name { max-width:100%; font-size:11px; line-height:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-      .device-state { font-size:10px; line-height:11px; color:rgba(225,225,225,.45); }
+      .device-tiles { padding:0 12px 10px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+      .device-tile { min-height:58px; min-width:0; padding:8px 10px; border-radius:12px; border:1px solid ${COLORS.faint}; background:rgba(225,225,225,.05); color:${COLORS.text}; display:flex; align-items:center; justify-content:flex-start; gap:9px; text-align:left; }
+      .device-tile ha-icon { width:22px; height:22px; flex:0 0 22px; display:block; --mdc-icon-size:22px; }
+      .device-copy { min-width:0; display:block; }
+      .device-name { display:block; max-width:100%; font-size:11px; line-height:13px; font-weight:500; white-space:normal; overflow-wrap:anywhere; }
+      .device-state { display:block; margin-top:2px; font-size:10px; line-height:11px; color:rgba(225,225,225,.45); }
       .bedroom-details { padding:0 12px 10px; display:flex; flex-direction:column; gap:8px; }
-      .bedroom-device-grid { padding:0; grid-template-columns:repeat(4,1fr); }
+      .bedroom-device-grid { padding:0; grid-template-columns:repeat(2,minmax(0,1fr)); }
       .empty-filter { padding:40px 16px; color:rgba(225,225,225,.45); font-size:13px; text-align:center; }
       .climate-row { min-height:52px; padding:10px 12px; border-radius:12px; background:rgba(3,169,244,.12); border:1px solid rgba(3,169,244,.22); display:flex; align-items:center; gap:12px; }
       .climate-row > ha-icon { width:22px; height:22px; color:${COLORS.blue}; }
@@ -525,12 +538,12 @@ class SimplyHomeDashboard extends HTMLElement {
   }
 
   filterButton(id, icon, label) {
-    return `<button class="filter ${this._filter === id ? "active" : ""}" data-action="filter" data-filter="${id}">${this.icon(icon)}<span>${label}</span></button>`;
+    return `<button class="filter ${this._filter === id ? "active" : ""}" data-action="filter" data-filter="${id}"><span class="filter-icon">${this.icon(icon)}</span><span class="filter-label">${label}</span></button>`;
   }
 
   roomDevices(room) {
     if (this._filter === "all") return room.devices;
-    return room.devices.filter((device) => device[4] === this._filter);
+    return room.devices.filter((device) => device[3] === this._filter);
   }
 
   roomCard(room) {
@@ -561,22 +574,22 @@ class SimplyHomeDashboard extends HTMLElement {
   roomToggleEntities(room) {
     const visibleEntities = new Set(
       this.roomDevices(room)
-        .filter((device) => device[5] !== "more-info")
+        .filter((device) => device[4] !== "more-info")
         .map((device) => device[0]),
     );
     return room.entities.filter((entity) => visibleEntities.has(entity) && this.available(entity));
   }
 
-  deviceTile([entity, name, icon, color, , action = "toggle"]) {
+  deviceTile([entity, icon, color, , action = "toggle"]) {
     const on = this.isOn(entity);
-    return `<button class="device-tile" style="${on ? `background:${color}1f;border-color:${color}40` : ""}" data-action="${action}" data-entity="${entity}">${this.icon(icon)}<span class="device-name">${name}</span><span class="device-state">${this.entityLabel(entity)}</span></button>`;
+    return `<button class="device-tile" style="${on ? `background:${color}1f;border-color:${color}40` : ""}" data-action="${action}" data-entity="${entity}">${this.icon(icon)}<span class="device-copy"><span class="device-name">${this.escape(this.entityName(entity))}</span><span class="device-state">${this.entityLabel(entity)}</span></span></button>`;
   }
 
   bedroomDetails(devices) {
     const aircon = devices.find((device) => device[0] === "switch.bedroom_aircon_socket_1");
     const otherDevices = devices.filter((device) => device !== aircon);
     const airconRow = aircon
-      ? `<div class="climate-row" data-action="toggle" data-entity="switch.bedroom_aircon_socket_1">${this.icon("mdi:air-conditioner")}<div class="climate-copy"><b>Air conditioner</b><span>${this.entityLabel("switch.bedroom_aircon_socket_1")} · ${this.number("sensor.bedroom_aircon_power").toFixed(1)} W</span></div><div class="climate-control"><span>Power</span><span class="toggle ${this.isOn("switch.bedroom_aircon_socket_1") ? "on" : ""}" style="${this.isOn("switch.bedroom_aircon_socket_1") ? `background:${COLORS.blue}` : ""}"></span></div></div>`
+      ? `<div class="climate-row" data-action="toggle" data-entity="switch.bedroom_aircon_socket_1">${this.icon("mdi:air-conditioner")}<div class="climate-copy"><b>${this.escape(this.entityName("switch.bedroom_aircon_socket_1"))}</b><span>${this.entityLabel("switch.bedroom_aircon_socket_1")} · ${this.number("sensor.bedroom_aircon_power").toFixed(1)} W</span></div><div class="climate-control"><span>Power</span><span class="toggle ${this.isOn("switch.bedroom_aircon_socket_1") ? "on" : ""}" style="${this.isOn("switch.bedroom_aircon_socket_1") ? `background:${COLORS.blue}` : ""}"></span></div></div>`
       : "";
     const deviceGrid = otherDevices.length
       ? `<div class="device-tiles bedroom-device-grid">${otherDevices.map((device) => this.deviceTile(device)).join("")}</div>`
