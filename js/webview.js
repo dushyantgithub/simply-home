@@ -1209,6 +1209,18 @@ const navigationEvents = async () => {
 const viewEvents = async () => {
   const ready = [];
 
+  const retryLoad = (view, url) => {
+    clearTimeout(view.retryTimeout);
+    view.retryTimeout = setTimeout(async () => {
+      if (await onlineStatus(url, 2000, 10000)) {
+        view.retryTimeout = null;
+        view.webContents.loadURL(url);
+      } else {
+        retryLoad(view, url);
+      }
+    }, 5000);
+  };
+
   const loaded = (i) => {
     if (WEBVIEW.viewActive) {
       return true;
@@ -1283,14 +1295,19 @@ const viewEvents = async () => {
           default:
             console.error(`Load Error: ${url}, ${text} (${code})`);
             view.webContents.loadURL(errorHtml(code, text, url, WEBVIEW.theme.get()));
+            retryLoad(view, url);
         }
         loaded(i);
       }
     });
 
     // Webview url changed
-    view.webContents.on("did-navigate", () => {
+    view.webContents.on("did-navigate", (e, url) => {
       console.debug(`webview.js: viewEvents(${i},did-navigate)`);
+      if (!url.startsWith("data:")) {
+        clearTimeout(view.retryTimeout);
+        view.retryTimeout = null;
+      }
       updateView();
     });
     view.webContents.on("did-navigate-in-page", (e, url, mainframe) => {
