@@ -1,0 +1,8 @@
+node_modules/
+out/
+build.json
+deploy/home-assistant/.env
+deploy/home-assistant/home-assistant/config/
+deploy/home-assistant/mosquitto/config/password_file
+deploy/home-assistant/mosquitto/data/
+deploy/home-assistant/mosquitto/log/

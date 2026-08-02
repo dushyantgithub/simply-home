@@ -1,0 +1,35 @@
+{
+    "name": "simply-home",
+    "title": "Simply Home",
+    "description": "Touch-first Home Assistant kiosk for Linux displays",
+    "homepage": "https://github.com/dushyantgithub/simply-home",
+    "author": "dushyantgithub",
+    "version": "0.1.0",
+    "license": "MIT",
+    "main": "index.js",
+    "scripts": {
+        "start": "electron . --web-url=https://demo.home-assistant.io --trace-warnings",
+        "build": "electron-forge make",
+        "format:check": "prettier --check index.js forge.config.js js html"
+    },
+    "prettier": {
+        "printWidth": 120
+    },
+    "devDependencies": {
+        "@electron-forge/cli": "^7.11.1",
+        "@electron-forge/maker-deb": "^7.11.1",
+        "@electron-forge/maker-zip": "^7.11.1",
+        "@electron-forge/publisher-github": "^7.11.1",
+        "electron": "^42.1.0",
+        "jszip": "^3.10.1",
+        "prettier": "^3.8.3"
+    },
+    "dependencies": {
+        "axios": "^1.19.0",
+        "electron-log": "^5.4.4",
+        "mqtt": "^5.15.2"
+    },
+    "resolutions": {
+        "ws": "^8.21.1"
+    }
+}
