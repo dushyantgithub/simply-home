@@ -258,25 +258,30 @@ class SimplyHomeDashboard extends HTMLElement {
       .weather-main ha-icon { width:30px; height:30px; color:${COLORS.amber}; }
       .temperature { font-size:34px; line-height:34px; font-weight:300; }
       .weather-detail { font-size:12px; line-height:15px; color:rgba(225,225,225,.4); text-align:right; }
-      .chips { display:flex; gap:8px; flex:0 0 auto; }
+      .chips { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
       .chip {
         min-width:0; flex:1 1 0; height:38px; border-radius:19px; border:1px solid ${COLORS.faint};
-        background:${COLORS.card}; display:flex; align-items:center; justify-content:center; gap:6px;
-        color:${COLORS.text}; font-size:13px; font-weight:500; white-space:nowrap;
+        background:${COLORS.card}; display:inline-flex; align-items:center; justify-content:center; gap:7px;
+        color:${COLORS.text}; font-size:13px; line-height:1; font-weight:500; white-space:nowrap;
       }
-      .chip ha-icon { width:17px; height:17px; }
-      .chip:nth-child(1) ha-icon { color:#2196f3; }
-      .chip:nth-child(2) ha-icon,.chip:nth-child(3) ha-icon { color:${COLORS.amber}; }
-      .chip:nth-child(4) ha-icon { color:${COLORS.green}; }
+      .chip-icon { width:18px; height:18px; flex:0 0 18px; display:grid; place-items:center; line-height:0; }
+      .chip-icon ha-icon { width:17px; height:17px; display:block; --mdc-icon-size:17px; }
+      .chip-label { display:block; line-height:16px; }
+      .chip:nth-child(1) .chip-icon { color:#2196f3; }
+      .chip:nth-child(2) .chip-icon,.chip:nth-child(3) .chip-icon { color:${COLORS.amber}; }
+      .chip:nth-child(4) .chip-icon { color:${COLORS.green}; }
       .camera-card { flex:0 0 auto; overflow:hidden; border-radius:16px; background:${COLORS.card}; border:1px solid ${COLORS.faint}; }
       .camera {
         height:150px; position:relative; display:flex; align-items:center; justify-content:center;
         background-color:#1a1a1a; background-size:cover; background-position:center;
         background-image:repeating-linear-gradient(135deg,#212121 0 10px,#1a1a1a 10px 20px);
       }
-      .camera.has-picture::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.08); }
+      .camera-fallback { position:absolute; inset:0; z-index:0; width:100%; height:100%; display:block; object-fit:cover; }
+      .native-camera-host { position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none; }
+      .native-camera-host > * { width:100%; height:100%; display:block; }
+      .camera.has-picture::after { content:""; position:absolute; inset:0; z-index:2; pointer-events:none; background:rgba(0,0,0,.08); }
       .camera-placeholder { position:relative; z-index:1; color:rgba(225,225,225,.35); font:11px "Roboto Mono",monospace; letter-spacing:.06em; }
-      .live-label,.camera-age { position:absolute; z-index:2; border-radius:12px; background:rgba(0,0,0,.58); }
+      .live-label,.camera-age { position:absolute; z-index:3; border-radius:12px; background:rgba(0,0,0,.58); }
       .live-label { top:10px; left:10px; padding:4px 9px; display:flex; align-items:center; gap:6px; font-size:11px; font-weight:500; letter-spacing:.03em; }
       .live-dot { width:7px; height:7px; border-radius:50%; background:${COLORS.red}; }
       .camera-age { right:10px; bottom:10px; padding:4px 9px; color:rgba(225,225,225,.6); font:11px "Roboto Mono",monospace; }
@@ -408,6 +413,7 @@ class SimplyHomeDashboard extends HTMLElement {
             "switch.home_360_motion_tracking",
             "switch.home_360_video_recording",
             "switch.home_360_privacy_mode",
+            "select.home_360_night_vision",
             "sensor.bedroom_aircon_power",
             "sensor.bedroom_aircon_total_energy",
             "sensor.geyser_power",
@@ -437,6 +443,33 @@ class SimplyHomeDashboard extends HTMLElement {
     this.shadowRoot
       .querySelectorAll("[data-action]")
       .forEach((element) => element.addEventListener("click", this._handleClick));
+    void this.setupCameraCards();
+  }
+
+  async setupCameraCards() {
+    const stateObj = this.state("camera.home_360");
+    const hosts = [...this.shadowRoot.querySelectorAll("[data-camera-host]")];
+    if (!stateObj || !hosts.length || typeof window.loadCardHelpers !== "function") return;
+    try {
+      const helpers = await window.loadCardHelpers();
+      for (const host of hosts) {
+        if (!host.isConnected) continue;
+        const card = await helpers.createCardElement({
+          type: "picture-entity",
+          entity: "camera.home_360",
+          camera_view: "live",
+          fit_mode: "cover",
+          show_name: false,
+          show_state: false,
+          tap_action: { action: "none" },
+          hold_action: { action: "none" },
+        });
+        card.hass = this._hass;
+        host.replaceChildren(card);
+      }
+    } catch (error) {
+      console.warn("Unable to load the Home 360 camera card", error);
+    }
   }
 
   nav(active) {
@@ -469,6 +502,16 @@ class SimplyHomeDashboard extends HTMLElement {
     return icons[condition] || "mdi:weather-partly-cloudy";
   }
 
+  cameraFrame(label, height = 150) {
+    const camera = this.state("camera.home_360");
+    const picture = camera?.attributes?.entity_picture || "";
+    return `<div class="camera ${picture ? "has-picture" : ""}" style="height:${height}px">
+      ${picture ? `<img class="camera-fallback" src="${this.escape(picture)}" alt="${this.escape(this.entityName("camera.home_360"))}">` : '<span class="camera-placeholder">camera.home_360 · live snapshot</span>'}
+      ${camera ? '<div class="native-camera-host" data-camera-host></div>' : ""}
+      <div class="live-label"><i class="live-dot"></i><span>${this.escape(label)}</span></div><div class="camera-age">live</div>
+    </div>`;
+  }
+
   homeScreen() {
     const now = new Date();
     const hour = now.getHours();
@@ -484,7 +527,6 @@ class SimplyHomeDashboard extends HTMLElement {
     const powerText = power >= 1000 ? `${(power / 1000).toFixed(1)} kW` : `${power.toFixed(1)} W`;
     const lightsOn = LIGHT_ENTITIES.filter((id) => this.isOn(id)).length;
     const peopleHome = ["person.dushyant"].filter((id) => this.state(id)?.state === "home").length;
-    const picture = this.state("camera.home_360")?.attributes?.entity_picture || "";
     const motionOn = this.isOn("switch.home_360_motion_alarm");
     const recordingOn = this.isOn("switch.home_360_video_recording");
     return `
@@ -494,16 +536,13 @@ class SimplyHomeDashboard extends HTMLElement {
           <div class="weather"><div class="weather-main">${this.icon(this.weatherIcon(condition))}<span class="temperature">${temp}°</span></div><div class="weather-detail">${this.escape(condition.replaceAll("-", " "))} · ${humidity == null ? "Weather" : `${humidity}% RH`}</div></div>
         </section>
         <section class="chips">
-          <div class="chip">${this.icon("mdi:water-percent", "blue")}<span>${humidity == null ? "--" : `${humidity}%`}</span></div>
-          <div class="chip">${this.icon("mdi:flash")}<span>${powerText}</span></div>
-          <div class="chip">${this.icon("mdi:lightbulb")}<span>${lightsOn} on</span></div>
-          <div class="chip">${this.icon("mdi:account-group")}<span>${peopleHome}</span></div>
+          <div class="chip"><span class="chip-icon">${this.icon("mdi:water-percent")}</span><span class="chip-label">${humidity == null ? "--" : `${humidity}%`}</span></div>
+          <div class="chip"><span class="chip-icon">${this.icon("mdi:flash")}</span><span class="chip-label">${powerText}</span></div>
+          <div class="chip"><span class="chip-icon">${this.icon("mdi:lightbulb")}</span><span class="chip-label">${lightsOn} on</span></div>
+          <div class="chip"><span class="chip-icon">${this.icon("mdi:account-group")}</span><span class="chip-label">${peopleHome}</span></div>
         </section>
         <section class="camera-card" data-action="navigate" data-path="/wall-panel/security">
-          <div class="camera ${picture ? "has-picture" : ""}" ${picture ? `style="background-image:url('${this.escape(picture)}')"` : ""}>
-            ${picture ? "" : '<span class="camera-placeholder">camera.home_360 · live snapshot</span>'}
-            <div class="live-label"><i class="live-dot"></i><span>HOME CAMERA</span></div><div class="camera-age">live</div>
-          </div>
+          ${this.cameraFrame("HOME CAMERA")}
           <div class="camera-status">
             <div class="status-part">${this.icon("mdi:record-rec")}<span>${recordingOn ? "Recording" : "Standby"}</span></div><i class="divider"></i>
             <div class="status-part">${this.icon("mdi:motion-sensor")}<span>${motionOn ? "Motion on" : "No alarm"}</span></div><i class="divider"></i>
@@ -598,8 +637,7 @@ class SimplyHomeDashboard extends HTMLElement {
   }
 
   securityScreen() {
-    const picture = this.state("camera.home_360")?.attributes?.entity_picture || "";
-    return `<main class="scroll security-scroll"><div class="screen-title">Security</div><div class="date" style="margin-top:-10px">Home camera and alerts</div><section class="camera-card"><div class="camera ${picture ? "has-picture" : ""}" style="height:250px;${picture ? `background-image:url('${this.escape(picture)}')` : ""}">${picture ? "" : '<span class="camera-placeholder">camera.home_360 · live snapshot</span>'}<div class="live-label"><i class="live-dot"></i><span>HOME 360</span></div><div class="camera-age">live</div></div></section><div class="control-grid">${this.controlCard("switch.home_360_motion_alarm", "Motion alarm", "mdi:motion-sensor", COLORS.orange)}${this.controlCard("switch.home_360_motion_tracking", "Tracking", "mdi:target-account", COLORS.blue)}${this.controlCard("switch.home_360_video_recording", "Recording", "mdi:record-rec", COLORS.red)}${this.controlCard("switch.home_360_privacy_mode", "Privacy", "mdi:eye-off", COLORS.purple)}</div><section class="person-row"><span class="person-icon">${this.icon("mdi:account")}</span><div class="row-copy"><b>Dushyant</b><span>${this.entityLabel("person.dushyant")}</span></div><span style="color:${this.state("person.dushyant")?.state === "home" ? COLORS.green : COLORS.muted}">${this.icon("mdi:home-account")}</span></section><section class="system-row" data-action="more-info" data-entity="siren.home_360_siren"><span class="room-icon" style="background:${COLORS.red}20;color:${COLORS.red}">${this.icon("mdi:alarm-light")}</span><div class="row-copy"><b>Emergency siren</b><span>${this.entityLabel("siren.home_360_siren")} · tap for controls</span></div>${this.icon("mdi:chevron-right", "chevron")}</section><div class="section-title">Camera preferences</div><section class="system-row" data-action="more-info" data-entity="select.home_360_night_vision"><span class="room-icon" style="background:${COLORS.blue}20;color:${COLORS.blue}">${this.icon("mdi:weather-night")}</span><div class="row-copy"><b>Night vision</b><span>${this.entityLabel("select.home_360_night_vision")}</span></div>${this.icon("mdi:chevron-right", "chevron")}</section></main>${this.nav("security")}`;
+    return `<main class="scroll security-scroll"><div class="screen-title">Security</div><div class="date" style="margin-top:-10px">Home camera and alerts</div><section class="camera-card">${this.cameraFrame("HOME 360", 250)}</section><div class="control-grid">${this.controlCard("switch.home_360_motion_alarm", "Motion alarm", "mdi:motion-sensor", COLORS.orange)}${this.controlCard("switch.home_360_motion_tracking", "Tracking", "mdi:target-account", COLORS.blue)}${this.controlCard("switch.home_360_video_recording", "Recording", "mdi:record-rec", COLORS.red)}${this.controlCard("switch.home_360_privacy_mode", "Privacy", "mdi:eye-off", COLORS.purple)}</div><section class="person-row"><span class="person-icon">${this.icon("mdi:account")}</span><div class="row-copy"><b>Dushyant</b><span>${this.entityLabel("person.dushyant")}</span></div><span style="color:${this.state("person.dushyant")?.state === "home" ? COLORS.green : COLORS.muted}">${this.icon("mdi:home-account")}</span></section><section class="system-row" data-action="more-info" data-entity="siren.home_360_siren"><span class="room-icon" style="background:${COLORS.red}20;color:${COLORS.red}">${this.icon("mdi:alarm-light")}</span><div class="row-copy"><b>Emergency siren</b><span>${this.entityLabel("siren.home_360_siren")} · tap for controls</span></div>${this.icon("mdi:chevron-right", "chevron")}</section><div class="section-title">Camera preferences</div><section class="system-row" data-action="select-next" data-entity="select.home_360_night_vision"><span class="room-icon" style="background:${COLORS.blue}20;color:${COLORS.blue}">${this.icon("mdi:weather-night")}</span><div class="row-copy"><b>Night vision</b><span>${this.entityLabel("select.home_360_night_vision")} · tap to change</span></div>${this.icon("mdi:swap-horizontal", "chevron")}</section></main>${this.nav("security")}`;
   }
 
   controlCard(entity, name, icon, color) {
@@ -667,6 +705,16 @@ class SimplyHomeDashboard extends HTMLElement {
     if (action === "filter") {
       this._filter = target.dataset.filter;
       this.render(true);
+      return;
+    }
+    if (action === "select-next") {
+      const entity = target.dataset.entity;
+      const state = this.state(entity);
+      const options = state?.attributes?.options || [];
+      if (!options.length) return;
+      const currentIndex = options.indexOf(state.state);
+      const option = options[(currentIndex + 1) % options.length];
+      await this._hass.callService("select", "select_option", { entity_id: entity, option });
       return;
     }
     if (action === "more-info") {
