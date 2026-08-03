@@ -158,6 +158,11 @@ class SimplyHomeDashboard extends HTMLElement {
     this._userCount = null;
     this._usersFetchedAt = 0;
     this._usersRequest = null;
+    try {
+      this._localThemeMode = window.localStorage.getItem("simply-home-theme");
+    } catch {
+      this._localThemeMode = null;
+    }
     this._handleClick = (event) => this.handleClick(event);
   }
 
@@ -257,18 +262,37 @@ class SimplyHomeDashboard extends HTMLElement {
     return Object.keys(this._hass?.states || {}).filter((id) => id.startsWith("person."));
   }
 
+  themeEntityIds() {
+    return Object.entries(this._hass?.states || {})
+      .filter(([id, state]) => {
+        if (!id.startsWith("select.") && !id.startsWith("input_select.")) return false;
+        const options = (state?.attributes?.options || []).map((option) => String(option).toLowerCase());
+        return (
+          options.includes("light") &&
+          options.includes("dark") &&
+          (id.includes("theme") ||
+            String(state?.attributes?.friendly_name || "")
+              .toLowerCase()
+              .includes("theme"))
+        );
+      })
+      .map(([id]) => id)
+      .sort((a, b) => {
+        const score = (id) => (id === "input_select.simply_home_theme" ? 0 : id.startsWith("input_select.") ? 1 : 2);
+        return score(a) - score(b) || a.localeCompare(b);
+      });
+  }
+
   themeEntityId() {
+    return this.themeEntityIds()[0];
+  }
+
+  orientationEntityId() {
     return Object.entries(this._hass?.states || {}).find(([id, state]) => {
       if (!id.startsWith("select.") && !id.startsWith("input_select.")) return false;
-      const options = (state?.attributes?.options || []).map((option) => String(option).toLowerCase());
-      return (
-        options.includes("light") &&
-        options.includes("dark") &&
-        (id.includes("theme") ||
-          String(state?.attributes?.friendly_name || "")
-            .toLowerCase()
-            .includes("theme"))
-      );
+      const name = `${id} ${state?.attributes?.friendly_name || ""}`.toLowerCase();
+      const options = (state?.attributes?.options || []).map((option) => String(option).replace("°", ""));
+      return name.includes("orientation") && ["0", "90", "180", "270"].every((option) => options.includes(option));
     })?.[0];
   }
 
@@ -283,7 +307,9 @@ class SimplyHomeDashboard extends HTMLElement {
   dashboardThemeMode() {
     const entity = this.themeEntityId();
     const selected = entity ? String(this.state(entity)?.state || "").toLowerCase() : "";
-    return ["light", "dark"].includes(selected) ? selected : this.scheduledThemeMode();
+    if (["light", "dark"].includes(selected)) return selected;
+    if (["light", "dark"].includes(this._localThemeMode)) return this._localThemeMode;
+    return this.scheduledThemeMode();
   }
 
   spotifyEntityId() {
@@ -328,20 +354,21 @@ class SimplyHomeDashboard extends HTMLElement {
         --sh-album-b:${light ? "#f0f2f4" : "#232323"};
         --sh-nav-clear:${light ? "rgba(245,246,248,0)" : "rgba(17,17,17,0)"};
         --sh-nav-soft:${light ? "rgba(245,246,248,.92)" : "rgba(17,17,17,.92)"};
-        display:block; width:100%; height:calc(100% + 1px); margin-top:-1px; overflow:hidden;
+        display:block; width:100%; height:calc(100% + 1px); min-height:calc(100dvh + 1px); margin-top:-1px; overflow:hidden;
         border:0; outline:0; box-shadow:none; background:var(--sh-bg);
       }
       * { box-sizing:border-box; }
       button { font:inherit; }
       .panel {
-        width:100%; max-width:480px; height:calc(100vh + 1px); min-height:721px; margin:0 auto;
+        width:100%; height:calc(100vh + 1px); height:calc(100dvh + 1px); min-height:0; margin:0;
         position:relative; overflow:hidden; border:0; outline:0; box-shadow:none; background:${COLORS.bg}; color:${COLORS.text};
         font-family:Roboto,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
         -webkit-font-smoothing:antialiased; font-weight:400;
       }
       .scroll {
         position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:none;
-        padding:18px 16px 96px; display:flex; flex-direction:column; gap:14px;
+        min-height:0; padding:18px 16px 96px; display:flex; flex-direction:column; gap:14px;
+        overscroll-behavior-y:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch;
       }
       .scroll::-webkit-scrollbar { display:none; }
       .home-scroll { overflow-y:auto; }
@@ -443,6 +470,20 @@ class SimplyHomeDashboard extends HTMLElement {
       .alert { min-height:44px; flex:0 0 auto; padding:11px 14px; border-radius:14px; background:rgba(255,152,0,.09); border:1px solid rgba(255,152,0,.25); display:flex; align-items:center; gap:10px; font-size:13px; }
       .alert ha-icon { width:20px; height:20px; color:${COLORS.orange}; }
       .alert span { flex:1 1 0; }
+      .panel-controls { flex:0 0 auto; padding:14px; border-radius:16px; border:1px solid ${COLORS.faint}; background:${COLORS.card}; display:flex; flex-direction:column; gap:12px; }
+      .panel-controls-head { display:flex; align-items:center; gap:9px; }
+      .panel-controls-head ha-icon { width:20px; height:20px; color:${COLORS.blue}; }
+      .panel-controls-copy { min-width:0; }
+      .panel-controls-copy b { display:block; font-size:14px; line-height:18px; font-weight:500; }
+      .panel-controls-copy span { display:block; margin-top:1px; color:${COLORS.muted}; font-size:11px; line-height:14px; }
+      .panel-control-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+      .panel-control { min-width:0; padding:10px; border-radius:13px; background:var(--sh-fg-045); }
+      .panel-control-label { margin-bottom:8px; color:var(--sh-fg-55); font-size:11px; line-height:14px; font-weight:500; text-transform:uppercase; letter-spacing:.06em; }
+      .segments { display:grid; grid-template-columns:repeat(var(--segments,2),minmax(0,1fr)); gap:5px; }
+      .segment { min-width:0; height:34px; padding:0 6px; border:1px solid transparent; border-radius:9px; background:var(--sh-fg-08); color:var(--sh-fg-60); display:flex; align-items:center; justify-content:center; gap:5px; font-size:11px; font-weight:500; white-space:nowrap; }
+      .segment ha-icon { width:16px; height:16px; --mdc-icon-size:16px; }
+      .segment.active { border-color:rgba(3,169,244,.38); background:rgba(3,169,244,.16); color:${COLORS.blue}; }
+      .segment:disabled { opacity:.38; }
       .nav { position:absolute; z-index:20; left:0; right:0; bottom:0; height:80px; padding:0 8px 10px; display:flex; align-items:center; justify-content:space-around; background:linear-gradient(180deg,var(--sh-nav-clear) 0%,var(--sh-nav-soft) 34%,${COLORS.bg} 60%); }
       .nav-item { width:88px; min-height:56px; padding:8px 0; border:0; border-radius:16px; background:transparent; color:var(--sh-fg-45); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; text-decoration:none; }
       .nav-item.active { color:${COLORS.blue}; background:rgba(3,169,244,.14); }
@@ -523,13 +564,104 @@ class SimplyHomeDashboard extends HTMLElement {
       .night-status-icon ha-icon { width:17px; height:17px; display:block; color:var(--sh-fg-22); --mdc-icon-size:17px; }
       .night-status-label { display:block; line-height:18px; }
       .wake { position:absolute; bottom:44px; left:0; right:0; text-align:center; color:var(--sh-fg-16); font:11px "Roboto Mono",monospace; letter-spacing:.08em; }
+
+      @media (max-width:419.98px) {
+        .scroll { padding:14px 12px 92px; gap:12px; }
+        .clock { font-size:clamp(44px,15vw,58px); line-height:1; }
+        .temperature { font-size:30px; line-height:32px; }
+        .chips { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .forecast-card { padding:12px; }
+        .forecast-strip { overflow-x:auto; grid-template-columns:repeat(5,minmax(52px,1fr)); scrollbar-width:none; }
+        .quick-grid,.control-grid,.energy-grid { grid-template-columns:1fr; }
+        .media-card { gap:9px; }
+        .album { width:46px; height:46px; }
+        .media-actions { grid-template-columns:repeat(3,30px); gap:2px; }
+        .media-action { width:30px; height:30px; min-width:30px; min-height:30px; }
+        .device-header { padding-inline:12px; }
+        .filters { overflow-x:auto; scrollbar-width:none; }
+        .rooms { padding-inline:12px; }
+        .room-head { padding-inline:10px; gap:8px; }
+        .room-icon { width:32px; height:32px; flex-basis:32px; }
+        .device-tiles,.bedroom-device-grid { grid-template-columns:1fr; }
+        .night-time { font-size:clamp(58px,25vw,82px); line-height:1; }
+        .night-status { grid-template-columns:1fr; row-gap:8px; }
+      }
+
+      @media (max-width:619.98px) {
+        .panel-control-grid { grid-template-columns:1fr; }
+      }
+
+      @media (min-width:720px) {
+        .scroll { padding:22px max(20px,calc((100vw - 1200px) / 2)) 102px; }
+        .home-scroll {
+          display:grid; align-content:start; grid-template-columns:minmax(0,1.14fr) minmax(300px,.86fr);
+          grid-template-areas:"top top" "chips chips" "forecast map" "forecast quick" "media quick" "alert alert" "controls controls";
+        }
+        .home-scroll > .top { grid-area:top; }
+        .home-scroll > .chips { grid-area:chips; }
+        .home-scroll > .forecast-card { grid-area:forecast; }
+        .home-scroll > .map-card { grid-area:map; }
+        .home-scroll > .quick-grid { grid-area:quick; align-content:start; }
+        .home-scroll > .media-card { grid-area:media; }
+        .home-scroll > .alert { grid-area:alert; }
+        .home-scroll > .panel-controls { grid-area:controls; }
+        .native-map-host { height:clamp(150px,22vw,230px); }
+        .clock { font-size:clamp(58px,7vw,76px); line-height:1; }
+        .device-header { padding:18px max(20px,calc((100vw - 1200px) / 2)) 10px; }
+        .rooms {
+          inset:110px 0 0; padding:6px max(20px,calc((100vw - 1200px) / 2)) 102px;
+          display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); align-content:start; gap:12px;
+        }
+        .empty-filter { grid-column:1/-1; }
+        .security-scroll,.settings-scroll { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; }
+        .security-scroll > .screen-title,.security-scroll > .date,
+        .settings-scroll > .screen-title,.settings-scroll > .date { grid-column:1/-1; }
+        .security-scroll > .section-title,.settings-scroll > .section-title { grid-column:1/-1; }
+        .nav { left:50%; right:auto; width:min(100%,720px); transform:translateX(-50%); }
+        .night-time { font-size:clamp(88px,14vw,150px); line-height:1; }
+      }
+
+      @media (orientation:landscape) and (min-width:640px) and (max-height:650px) {
+        .scroll {
+          left:76px; right:auto; bottom:0; width:calc(100% - 76px); height:auto; max-height:100dvh;
+          padding:12px 14px max(22px,env(safe-area-inset-bottom)); gap:10px; scroll-padding-bottom:22px;
+        }
+        .home-scroll { grid-template-columns:minmax(0,1.08fr) minmax(280px,.92fr); }
+        .top { align-items:center; }
+        .clock { font-size:clamp(44px,8vw,64px); }
+        .chips { gap:6px; }
+        .chip { height:34px; }
+        .forecast-card,.panel-controls { padding:11px; }
+        .panel-controls { margin-bottom:4px; }
+        .forecast-section { margin-top:9px; }
+        .forecast-item { min-height:58px; }
+        .native-map-host { height:140px; }
+        .quick { height:60px; padding:9px; }
+        .quick-icon { width:38px; height:38px; }
+        .media-card { min-height:68px; padding:9px; }
+        .alert { min-height:40px; padding-block:8px; }
+        .nav {
+          left:0; right:auto; top:0; bottom:0; width:76px; height:auto; padding:10px 6px;
+          transform:none; flex-direction:column; justify-content:center; gap:8px;
+          background:linear-gradient(90deg,${COLORS.bg} 62%,var(--sh-nav-soft) 82%,var(--sh-nav-clear) 100%);
+        }
+        .nav-item { width:62px; min-height:58px; padding:7px 0; }
+        .device-header { width:calc(100% - 76px); margin-left:76px; padding:10px 14px 6px; }
+        .rooms { inset:94px 0 0 76px; padding:4px 14px 14px; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); }
+        .security-scroll,.settings-scroll { padding-bottom:14px; }
+        .night { left:76px; }
+        .night-time { font-size:clamp(68px,16vh,104px); }
+        .night-status { margin-top:14px; }
+        .wake { bottom:18px; }
+      }
     `;
   }
 
   signature() {
     const screen = this.config?.screen || "home";
     const spotify = this.spotifyEntityId();
-    const theme = this.themeEntityId();
+    const themes = this.themeEntityIds();
+    const orientation = this.orientationEntityId();
     const people = this.personEntityIds();
     const ids =
       screen === "home"
@@ -554,7 +686,8 @@ class SimplyHomeDashboard extends HTMLElement {
             "update.hacs_update",
           ]);
     if (spotify) ids.push(spotify);
-    if (theme) ids.push(theme);
+    ids.push(...themes);
+    if (orientation) ids.push(orientation);
     return `${screen}|${this._userCount ?? "users-loading"}|${new Date().toISOString().slice(0, 16)}|${ids
       .map((id) => {
         const state = this.state(id);
@@ -824,6 +957,26 @@ class SimplyHomeDashboard extends HTMLElement {
     </section>`;
   }
 
+  panelControls() {
+    const theme = this.dashboardThemeMode();
+    const orientationEntity = this.orientationEntityId();
+    const orientationState = String(this.state(orientationEntity)?.state || "").replace("°", "");
+    const orientationOptions = this.state(orientationEntity)?.attributes?.options || [];
+    const orientationButtons = ["0", "90", "180", "270"]
+      .map((angle) => {
+        const option = orientationOptions.find((value) => String(value).replace("°", "") === angle) || `${angle}°`;
+        return `<button class="segment ${orientationState === angle ? "active" : ""}" data-action="orientation-option" data-entity="${orientationEntity || ""}" data-option="${this.escape(option)}" aria-pressed="${orientationState === angle}" ${orientationEntity ? "" : "disabled"}>${angle}°</button>`;
+      })
+      .join("");
+    return `<section class="panel-controls">
+      <div class="panel-controls-head">${this.icon("mdi:tune-variant")}<div class="panel-controls-copy"><b>Panel controls</b><span>Manual theme and four-way display rotation</span></div></div>
+      <div class="panel-control-grid">
+        <div class="panel-control"><div class="panel-control-label">Theme</div><div class="segments" style="--segments:2"><button class="segment ${theme === "light" ? "active" : ""}" data-action="theme-option" data-option="Light" aria-pressed="${theme === "light"}">${this.icon("mdi:white-balance-sunny")}Light</button><button class="segment ${theme === "dark" ? "active" : ""}" data-action="theme-option" data-option="Dark" aria-pressed="${theme === "dark"}">${this.icon("mdi:weather-night")}Dark</button></div></div>
+        <div class="panel-control"><div class="panel-control-label">Orientation</div><div class="segments" style="--segments:4">${orientationButtons}</div></div>
+      </div>
+    </section>`;
+  }
+
   homeScreen() {
     const now = new Date();
     const hour = now.getHours();
@@ -863,6 +1016,7 @@ class SimplyHomeDashboard extends HTMLElement {
         </section>
         ${this.mediaCard()}
         <section class="alert" data-action="navigate" data-path="/wall-panel/security">${this.icon(motionOn ? "mdi:motion-sensor" : "mdi:shield-check")}<span>${motionOn ? "Home camera motion alarm is enabled" : "Security monitoring is ready"}</span>${this.icon("mdi:chevron-right")}</section>
+        ${this.panelControls()}
       </main>${this.nav("home")}`;
   }
 
@@ -1008,6 +1162,35 @@ class SimplyHomeDashboard extends HTMLElement {
       window.dispatchEvent(new Event("location-changed"));
       return;
     }
+    if (action === "theme-option") {
+      const option = target.dataset.option;
+      const mode = String(option || "").toLowerCase();
+      if (!["light", "dark"].includes(mode)) return;
+      this._localThemeMode = mode;
+      try {
+        window.localStorage.setItem("simply-home-theme", mode);
+      } catch {}
+      await Promise.allSettled(
+        this.themeEntityIds().map((entity) => {
+          const domain = entity.split(".")[0];
+          const actualOption = (this.state(entity)?.attributes?.options || []).find(
+            (value) => String(value).toLowerCase() === mode,
+          );
+          return this._hass.callService(domain, "select_option", { entity_id: entity, option: actualOption || option });
+        }),
+      );
+      this.render(true);
+      return;
+    }
+    if (action === "orientation-option") {
+      const entity = target.dataset.entity;
+      if (!entity) return;
+      await this._hass.callService(entity.split(".")[0], "select_option", {
+        entity_id: entity,
+        option: target.dataset.option,
+      });
+      return;
+    }
     if (action === "toggle") {
       await this._hass.callService("homeassistant", "toggle", { entity_id: target.dataset.entity });
       return;
@@ -1077,6 +1260,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "simply-home-dashboard",
   name: "Simply Home Dashboard",
-  description: "Pixel-matched 480×800 wall panel dashboard",
+  description: "Responsive touch-first wall panel dashboard",
   preview: true,
 });

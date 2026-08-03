@@ -29,6 +29,11 @@ global.HARDWARE = global.HARDWARE || {
       command: null,
       value: {},
     },
+    orientation: {
+      command: null,
+      output: null,
+      value: null,
+    },
   },
   keyboard: {
     visible: null,
@@ -63,10 +68,23 @@ const init = async () => {
   HARDWARE.display.brightness.path = getDisplayBrightnessPath();
   HARDWARE.display.brightness.command = getDisplayBrightnessCommand();
   HARDWARE.display.brightness.value.max = getDisplayBrightnessMax();
+  HARDWARE.display.orientation.command = getDisplayOrientationCommand();
+  HARDWARE.display.orientation.output = getDisplayOutput();
   HARDWARE.audio.device.output = getAudioOutput();
   HARDWARE.audio.device.input = getAudioInput();
   HARDWARE.support = checkSupport();
   HARDWARE.initialized = true;
+
+  // Restore the last manual orientation after the compositor has started.
+  if (HARDWARE.support.displayOrientation) {
+    const orientation = getDisplayOrientation();
+    HARDWARE.display.orientation.value = orientation;
+    const orientationCache = getDisplayOrientationCachePath();
+    const savedOrientation = fs.existsSync(orientationCache) ? readFile(orientationCache) : null;
+    if (["0°", "90°", "180°", "270°"].includes(savedOrientation) && savedOrientation !== orientation) {
+      setDisplayOrientation(savedOrientation);
+    }
+  }
 
   // Show supported features
   process.stdout.write("\n");
@@ -120,6 +138,12 @@ const init = async () => {
   console.info(
     `Display Brightness [${HARDWARE.support.displayBrightness ? HARDWARE.display.brightness.path : unsupported}]:`,
     displayBrightnessInfo,
+  );
+  const displayOrientation = `${getDisplayOrientation()} (${HARDWARE.display.orientation.command})`;
+  const displayOrientationInfo = HARDWARE.support.displayOrientation ? displayOrientation : unsupported;
+  console.info(
+    `Display Orientation [${HARDWARE.support.displayOrientation ? HARDWARE.display.orientation.output : unsupported}]:`,
+    displayOrientationInfo,
   );
   const audioVolume = `${getAudioVolume()} (pactl)`;
   const audioVolumeInfo = HARDWARE.support.audioVolume ? audioVolume : unsupported;
@@ -242,6 +266,16 @@ const update = async () => {
       console.info("Update Display Brightness:", getDisplayBrightness());
     }
   }
+
+  // Check if display orientation has changed outside the application.
+  if (HARDWARE.support.displayOrientation) {
+    const orientation = getDisplayOrientation();
+    if (orientation && orientation !== HARDWARE.display.orientation.value) {
+      HARDWARE.display.orientation.value = orientation;
+      EVENTS.emit("updateOrientation");
+      console.info("Update Display Orientation:", orientation);
+    }
+  }
 };
 
 /**
@@ -315,12 +349,15 @@ const checkSupport = () => {
   const statusCommand = !!HARDWARE.display.status.command;
   const brightnessPath = !!HARDWARE.display.brightness.path && !!HARDWARE.display.brightness.value.max;
   const brightnessCommand = !!HARDWARE.display.brightness.command && !!HARDWARE.display.brightness.value.max;
+  const orientationCommand = !!HARDWARE.display.orientation.command;
+  const orientationOutput = !!HARDWARE.display.orientation.output;
 
   return {
     batteryLevel: batteryPath,
     illuminanceLevel: illuminancePath,
     displayStatus: statusPath && statusCommand,
     displayBrightness: statusPath && statusCommand && brightnessPath && brightnessCommand,
+    displayOrientation: orientationCommand && orientationOutput,
     keyboardVisibility: keyboard,
     audioVolume: audioOutput,
     microphoneVolume: audioInput,
@@ -896,6 +933,119 @@ const setDisplayBrightness = (brightness, callback = null) => {
 };
 
 /**
+ * Gets the compositor command used to read and change display orientation.
+ *
+ * @returns {string|null} `wlr-randr` on Wayland, `xrandr` on X11, or null.
+ */
+const getDisplayOrientationCommand = () => {
+  const wayland = HARDWARE.session.type === "wayland" || !!process.env.WAYLAND_DISPLAY;
+  const x11 = HARDWARE.session.type === "x11" || !!process.env.DISPLAY;
+  if (wayland && commandExists("wlr-randr") && execSyncCommand("wlr-randr", []) !== null) {
+    return "wlr-randr";
+  }
+  if (x11 && commandExists("xrandr") && execSyncCommand("xrandr", ["--query"]) !== null) {
+    return "xrandr";
+  }
+  return null;
+};
+
+/**
+ * Gets the first enabled display output reported by the active compositor.
+ *
+ * @returns {string|null} The display output name or null.
+ */
+const getDisplayOutput = () => {
+  switch (HARDWARE.display.orientation.command) {
+    case "wlr-randr": {
+      const output = execSyncCommand("wlr-randr", []);
+      if (!output) return null;
+      const blocks = output.split(/\n(?=\S)/);
+      const enabled = blocks.find((block) => /^\s+Enabled:\s+yes\s*$/m.test(block)) || blocks[0];
+      return enabled?.match(/^(\S+)/)?.[1] || null;
+    }
+    case "xrandr": {
+      const output = execSyncCommand("xrandr", ["--query"]);
+      return output?.match(/^(\S+)\s+connected\b/m)?.[1] || null;
+    }
+  }
+  return null;
+};
+
+/**
+ * Gets the path used to persist a manual display orientation.
+ *
+ * @returns {string} Orientation cache file path.
+ */
+const getDisplayOrientationCachePath = () => path.join(APP.cache, "Display", "orientation");
+
+/**
+ * Gets the current display orientation.
+ *
+ * @returns {string|null} One of `0°`, `90°`, `180°`, `270°`, or null.
+ */
+const getDisplayOrientation = () => {
+  const outputName = HARDWARE.display.orientation.output;
+  if (!HARDWARE.display.orientation.command || !outputName) {
+    return null;
+  }
+  switch (HARDWARE.display.orientation.command) {
+    case "wlr-randr": {
+      const output = execSyncCommand("wlr-randr", []);
+      if (!output) return null;
+      const block = output.split(/\n(?=\S)/).find((entry) => entry.startsWith(`${outputName} `));
+      const transform = block?.match(/^\s+Transform:\s+(normal|90|180|270)\s*$/m)?.[1];
+      return transform ? `${transform === "normal" ? "0" : transform}°` : null;
+    }
+    case "xrandr": {
+      const output = execSyncCommand("xrandr", ["--query"]);
+      const line = output?.split("\n").find((entry) => entry.startsWith(`${outputName} connected`));
+      const rotation = line?.match(/\b(normal|right|inverted|left)\b/)?.[1];
+      return { normal: "0°", right: "90°", inverted: "180°", left: "270°" }[rotation] || null;
+    }
+  }
+  return null;
+};
+
+/**
+ * Sets and persists the display orientation.
+ *
+ * @param {string} orientation - One of `0°`, `90°`, `180°`, or `270°`.
+ * @param {Function} callback - A callback function that receives the output or error.
+ */
+const setDisplayOrientation = (orientation, callback = null) => {
+  if (!HARDWARE.support.displayOrientation) {
+    if (typeof callback === "function") callback(null, "Not supported");
+    return;
+  }
+  const orientations = ["0°", "90°", "180°", "270°"];
+  if (!orientations.includes(orientation)) {
+    console.error("Orientation must be one of 0°, 90°, 180° or 270°");
+    if (typeof callback === "function") callback(null, "Invalid orientation");
+    return;
+  }
+  const output = HARDWARE.display.orientation.output;
+  const complete = (reply, error) => {
+    if (!error) {
+      const cache = getDisplayOrientationCachePath();
+      fs.mkdirSync(path.dirname(cache), { recursive: true });
+      fs.writeFileSync(cache, orientation);
+      HARDWARE.display.orientation.value = orientation;
+      EVENTS.emit("updateOrientation");
+    }
+    if (typeof callback === "function") callback(reply, error);
+  };
+  if (HARDWARE.display.orientation.command === "wlr-randr") {
+    const transform = orientation === "0°" ? "normal" : orientation.replace("°", "");
+    execAsyncCommand("wlr-randr", ["--output", output, "--transform", transform], complete);
+    return;
+  }
+  if (HARDWARE.display.orientation.command === "xrandr") {
+    const rotation = { "0°": "normal", "90°": "right", "180°": "inverted", "270°": "left" }[orientation];
+    execAsyncCommand("xrandr", ["--output", output, "--rotate", rotation], complete);
+  }
+};
+
+/**
  * Gets the default audio output using `pactl`.
  *
  * @returns {string|null} The default audio output or null if an error occurs.
@@ -1422,6 +1572,8 @@ module.exports = {
   setDisplayStatus,
   getDisplayBrightness,
   setDisplayBrightness,
+  getDisplayOrientation,
+  setDisplayOrientation,
   getAudioVolume,
   setAudioVolume,
   getMicrophoneVolume,

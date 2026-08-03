@@ -63,6 +63,7 @@ The necessary requirements for MQTT sensors to work are listed here:
 | App (Update)         | Requires `sudo` rights, a `.deb` install, and `simply-home.service` running.                                  |
 | Display (Status)     | A working `wlopm`, `kscreen-doctor`, `xset`, or `ddcutil` command.                                            |
 | Display (Brightness) | `sudo` rights and `/sys/class/backlight/*/brightness`, or a working `ddcutil` command.                         |
+| Display (Orientation) | A working `wlr-randr` command on Wayland or `xrandr` on X11.                                                  |
 | Keyboard             | Raspberry Pi OS (Wayland) with `squeekboard` running.                                                         |
 | Battery              | A device under `/sys/class/power_supply/*/capacity`.                                                          |
 | Illuminance          | A device under `/sys/bus/iio/devices/*/in_illuminance_raw`.                                                  |

@@ -308,7 +308,9 @@ curl -I http://127.0.0.1:8123
 
 ### Touch or orientation is wrong
 
-Use **Preferences → Control Centre → Screens** first. Avoid old `lcd_rotate` tutorials unless the current Raspberry Pi display documentation specifically requires a boot setting for your configuration.
+The Home screen exposes 0°, 90°, 180°, and 270° controls when MQTT discovery and `wlr-randr` (Wayland) or `xrandr` (X11) are available. The selected angle is restored when Simply Home restarts. Automatic rotation requires an orientation sensor exposed by the operating system; most fixed Raspberry Pi touch panels, including the official DSI display, do not provide one.
+
+If the MQTT control is unavailable, use **Preferences → Control Centre → Screens**. Avoid old `lcd_rotate` tutorials unless the current Raspberry Pi display documentation specifically requires a boot setting for your configuration.
 
 ### Screen power or brightness is missing
 

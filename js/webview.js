@@ -837,6 +837,61 @@ const resizeView = () => {
 };
 
 /**
+ * Synchronizes the frameless Linux window and its child views with the
+ * compositor's current work area. Wayland does not always resize an existing
+ * Electron surface after `wlr-randr` changes the output transform.
+ */
+const syncDisplayBounds = async () => {
+  if (!WEBVIEW.window || WEBVIEW.syncingDisplayBounds || APP.exiting) {
+    return;
+  }
+  const display = screen.getPrimaryDisplay();
+  const area = display?.workArea || display?.bounds;
+  if (!area?.width || !area?.height) {
+    return;
+  }
+
+  WEBVIEW.syncingDisplayBounds = true;
+  try {
+    const previous = WEBVIEW.display || {};
+    WEBVIEW.display = { width: area.width, height: area.height };
+    const bounds = WEBVIEW.window.getBounds();
+    const changed =
+      bounds.x !== area.x || bounds.y !== area.y || bounds.width !== area.width || bounds.height !== area.height;
+
+    if (process.platform === "linux" && changed) {
+      if (WEBVIEW.window.isFullScreen()) {
+        WEBVIEW.window.setFullScreen(false);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+      if (WEBVIEW.window.isMaximized()) {
+        WEBVIEW.window.unmaximize();
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+      WEBVIEW.window.setBounds({ x: area.x, y: area.y, width: area.width, height: area.height });
+      console.info(`Update Display Bounds: ${area.width}x${area.height}+${area.x}+${area.y}`);
+    }
+
+    if (changed || previous.width !== area.width || previous.height !== area.height) {
+      resizeView();
+    }
+  } finally {
+    WEBVIEW.syncingDisplayBounds = false;
+  }
+};
+
+/**
+ * Runs display synchronization more than once because wlroots can report the
+ * transform before it publishes the final logical work-area dimensions.
+ */
+const scheduleDisplayBoundsSync = () => {
+  clearTimeout(WEBVIEW.displayBoundsTimer);
+  WEBVIEW.displayBoundsTimer = setTimeout(syncDisplayBounds, 100);
+  setTimeout(syncDisplayBounds, 500);
+  setTimeout(syncDisplayBounds, 1500);
+};
+
+/**
  * Register window events and handler.
  */
 const windowEvents = async () => {
@@ -918,46 +973,12 @@ const windowEvents = async () => {
   WEBVIEW.window.on("resize", resizeView);
   resizeView();
 
-  // Electron fullscreen can collapse a rotated Wayland surface to its minimum
-  // size. Keep portrait Linux panels as display-sized frameless windows.
-  if (process.platform === "linux" && WEBVIEW.display.height > WEBVIEW.display.width) {
-    let correctingPortraitBounds = false;
-    const correctPortraitBounds = async () => {
-      if (correctingPortraitBounds || APP.exiting) {
-        return;
-      }
-      correctingPortraitBounds = true;
-      try {
-        if (WEBVIEW.window.isFullScreen()) {
-          WEBVIEW.window.setFullScreen(false);
-          await new Promise((resolve) => setTimeout(resolve, 150));
-        }
-        if (WEBVIEW.window.isMaximized()) {
-          WEBVIEW.window.unmaximize();
-          await new Promise((resolve) => setTimeout(resolve, 150));
-        }
-        const bounds = WEBVIEW.window.getBounds();
-        if (
-          bounds.x !== 0 ||
-          bounds.y !== 0 ||
-          bounds.width !== WEBVIEW.display.width ||
-          bounds.height !== WEBVIEW.display.height
-        ) {
-          WEBVIEW.window.setBounds({
-            x: 0,
-            y: 0,
-            width: WEBVIEW.display.width,
-            height: WEBVIEW.display.height,
-          });
-        }
-        resizeView();
-      } finally {
-        correctingPortraitBounds = false;
-      }
-    };
-    correctPortraitBounds();
-    setInterval(correctPortraitBounds, 2000);
-  }
+  // Keep the window aligned after runtime rotation and monitor hot-plugging.
+  screen.on("display-metrics-changed", scheduleDisplayBoundsSync);
+  screen.on("display-added", scheduleDisplayBoundsSync);
+  screen.on("display-removed", scheduleDisplayBoundsSync);
+  scheduleDisplayBoundsSync();
+  setInterval(syncDisplayBounds, 2000);
 
   // Handle global shortcut events
   globalShortcut.register("Control+Left", () => {
@@ -1390,14 +1411,17 @@ const appEvents = async () => {
       WEBVIEW.tracker.display[status.toLowerCase()] = new Date();
     }
   });
+  EVENTS.on("updateOrientation", scheduleDisplayBoundsSync);
   EVENTS.on("updateStatus", () => {
     const status = WEBVIEW.tracker.window.status;
     const visibility = hardware.getKeyboardVisibility();
     const portraitLinux = process.platform === "linux" && WEBVIEW.display.height > WEBVIEW.display.width;
+    const activeUrl = WEBVIEW.views?.[WEBVIEW.viewActive]?.webContents.getURL() || "";
+    const wallPanel = activeUrl.includes("/wall-panel/");
     if (visibility === "ON" && ["Fullscreen", "Minimized"].includes(status)) {
       hardware.setKeyboardVisibility("OFF");
     }
-    toggleStatus(!portraitLinux && ["Framed", "Minimized"].includes(status) ? "ON" : "OFF");
+    toggleStatus(!wallPanel && !portraitLinux && ["Framed", "Minimized"].includes(status) ? "ON" : "OFF");
   });
   EVENTS.on("updateKeyboard", () => {
     if (!HARDWARE.support.keyboardVisibility) {

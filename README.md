@@ -16,7 +16,7 @@
 Simply Home combines two pieces:
 
 1. An Electron kiosk that keeps Home Assistant open on a dedicated Linux touchscreen, remembers the login, starts with the desktop session, and exposes optional panel controls through MQTT.
-2. A compact Home Assistant custom card designed for a 480 × 800 portrait wall panel, with home, device, security, weather, people-map, SpotifyPlus, and native Settings access.
+2. A responsive Home Assistant custom card that adapts from compact portrait panels to landscape and larger touch displays, with home, device, security, weather, people-map, SpotifyPlus, and native Settings access.
 
 ## Wall-panel screens
 
@@ -56,6 +56,7 @@ These screenshots were captured from the live Home Assistant wall-panel dashboar
 - Theme and zoom controls
 - Optional on-screen keyboard integration
 - Display wake, power, and brightness controls where supported
+- Persistent four-way display rotation through `wlr-randr` or `xrandr`
 - MQTT discovery for panel controls and diagnostics
 - Network, CPU, memory, temperature, audio, and uptime sensors
 - Remote refresh, screenshot, reboot, shutdown, and page switching
@@ -64,12 +65,14 @@ These screenshots were captured from the live Home Assistant wall-panel dashboar
 ### Simply Home dashboard
 
 - Purpose-built Home, Devices, and Security screens
+- Responsive layouts for compact portrait, wide/tablet, and short-landscape displays
 - Native Home Assistant Settings instead of a duplicate kiosk settings page
 - Dynamic Home Assistant user count
 - Home Assistant people map using available `person.*` entities
 - Hourly and daily weather forecasts
 - SpotifyPlus media-player discovery and playback controls
 - Light and dark dashboard modes
+- Manual theme and four-way orientation controls at the bottom of Home
 - Optional automation that uses dark mode during the day and light mode at night
 - A low-distraction night/away screen that shows the signed-in Home Assistant user
 
@@ -98,6 +101,7 @@ Home Assistant and Mosquitto may run on the same Raspberry Pi as the kiosk or on
 - Node.js 22 and Yarn Classic for source development
 - Docker Engine and Docker Compose only if this device will also host Home Assistant
 - An MQTT broker only if remote panel controls and diagnostics are wanted
+- Home Assistant's MQTT integration when dashboard orientation controls are wanted
 
 Use a dedicated, non-administrator Home Assistant user for a permanently mounted panel. Never commit `.env`, Home Assistant secrets, MQTT passwords, or Electron browser data.
 
@@ -240,6 +244,26 @@ docker exec homeassistant python -m homeassistant --script check_config --config
 ```
 
 The card also falls back to the `sun.sun` state when the helper has not been installed.
+
+### 6. Use responsive layout, theme, and orientation controls
+
+Simply Home reflows its Home screen for compact portrait panels, wide displays, and short landscape screens. In landscape, the navigation becomes a side rail and the page remains vertically scrollable, including the controls at the bottom of the dashboard.
+
+The **Panel controls** section at the bottom of Home provides manual **Light/Dark** theme buttons and four display positions: **0°**, **90°**, **180°**, and **270°**. Theme selection uses `input_select.simply_home_theme` when the helper above is installed; otherwise the card retains the choice locally. The included automation applies the day/night theme schedule on its next trigger.
+
+Display rotation is performed by the kiosk and persists across kiosk restarts. It requires a working display utility:
+
+```bash
+# Wayland
+wlr-randr
+
+# X11
+xrandr --query
+```
+
+The kiosk resizes itself after a transform, so a landscape rotation uses the full panel width without requiring an app restart. Automatic physical rotation is only possible when the display exposes an orientation sensor. Most Raspberry Pi DSI and HDMI touch panels do not, so the four manual choices are the reliable option.
+
+The orientation control is published to Home Assistant through MQTT discovery. Add Home Assistant's **MQTT** integration with the same broker used by Simply Home. In the bundled all-in-one deployment, the broker is local (`127.0.0.1`) on port `1883`; use the broker credentials configured for the kiosk. Do not place those credentials in this repository.
 
 ## Raspberry Pi: server and panel on one device
 

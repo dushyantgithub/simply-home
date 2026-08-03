@@ -71,6 +71,7 @@ const init = async () => {
       initRefresh();
       initKiosk();
       initTheme();
+      initOrientation();
       initDisplay();
       initVolume();
       initMicrophone();
@@ -109,6 +110,7 @@ const init = async () => {
       EVENTS.on("updateVolume", updateVolume);
       EVENTS.on("updateMicrophone", updateMicrophone);
       EVENTS.on("updateKeyboard", updateKeyboard);
+      EVENTS.on("updateOrientation", updateOrientation);
       EVENTS.on("updatePage", () => {
         updatePageNumber();
         updatePageZoom();
@@ -477,6 +479,49 @@ const updateTheme = async () => {
   }
   const theme = WEBVIEW.theme.get();
   publishState("theme", theme.charAt(0).toUpperCase() + theme.slice(1));
+};
+
+/**
+ * Initializes the display orientation select and handles its commands.
+ */
+const initOrientation = () => {
+  const root = `${INTEGRATION.root}/orientation`;
+  const config = {
+    name: "Orientation",
+    unique_id: `${INTEGRATION.node}_orientation`,
+    command_topic: `${root}/set`,
+    state_topic: `${root}/state`,
+    value_template: "{{ value }}",
+    options: ["0°", "90°", "180°", "270°"],
+    icon: "mdi:screen-rotation",
+    device: INTEGRATION.device,
+  };
+  if (!HARDWARE.support.displayOrientation || ARGS.app_disable.includes("mqtt_orientation")) {
+    removeConfig("select", config);
+    return;
+  }
+  publishConfig("select", config)
+    .on("message", (topic, message, packet) => {
+      if (topic === config.command_topic && !packet.retain) {
+        const orientation = message.toString();
+        console.verbose("Set Display Orientation:", orientation);
+        hardware.setDisplayOrientation(orientation, (reply, error) => {
+          if (error) console.warn("Command Failed:", error);
+        });
+      }
+    })
+    .subscribe(config.command_topic);
+  updateOrientation();
+};
+
+/**
+ * Updates the display orientation via the MQTT connection.
+ */
+const updateOrientation = async () => {
+  if (!HARDWARE.support.displayOrientation || ARGS.app_disable.includes("mqtt_orientation")) {
+    return;
+  }
+  publishState("orientation", hardware.getDisplayOrientation());
 };
 
 /**
