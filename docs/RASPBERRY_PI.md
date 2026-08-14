@@ -215,6 +215,26 @@ sudo reboot
 
 Expected order: Raspberry Pi OS boots, desktop auto-login starts, Docker restores Home Assistant and Mosquitto, and Simply Home opens the local dashboard. A temporary connection screen while Home Assistant starts is normal.
 
+### Keep Wi-Fi and the on-screen keyboard available
+
+Run the bundled system configuration once after connecting the Pi to Wi-Fi:
+
+```bash
+cd ~/simply-home
+bash deploy/raspberry-pi/configure-system.sh
+```
+
+The script updates the active NetworkManager Wi-Fi profile to connect automatically, retry indefinitely after an outage, and disable Wi-Fi power saving. The Wi-Fi password remains in NetworkManager's protected connection profile and is not copied into the repository.
+
+It also enables `simply-home-keyboard.service`, which starts Squeekboard with the graphical session and restarts it if it fails. The kiosk's side keyboard button can then show or hide the keyboard.
+
+Verify both settings with:
+
+```bash
+nmcli -g connection.autoconnect,connection.autoconnect-retries,802-11-wireless.powersave connection show "$(nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2 == "802-11-wireless" { print $1; exit }')"
+systemctl --user status simply-home-keyboard.service
+```
+
 ## 12. Build a dashboard for 800×480
 
 The original Display 1 is 800×480, so keep the dashboard compact:

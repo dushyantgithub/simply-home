@@ -49,6 +49,54 @@ echo -e "\nInstalling the latest release..."
 command -v apt &> /dev/null || { echo "Package manager apt was not found."; exit 1; }
 sudo apt install -y "$DEB_PATH" || { echo "Installation of .deb file failed."; exit 1; }
 
+# Make the active Wi-Fi profile resilient across outages and reboots. A retry
+# value of zero means NetworkManager keeps retrying indefinitely. Disabling
+# Wi-Fi power saving avoids a common source of kiosk disconnects.
+if command -v nmcli &> /dev/null; then
+    WIFI_CONNECTION=$(nmcli -t -f NAME,TYPE,DEVICE connection show --active |
+        awk -F: '$2 == "802-11-wireless" && $3 != "" { print $1; exit }')
+    if [ -n "$WIFI_CONNECTION" ]; then
+        sudo nmcli connection modify "$WIFI_CONNECTION" \
+            connection.autoconnect yes \
+            connection.autoconnect-priority 100 \
+            connection.autoconnect-retries 0 \
+            802-11-wireless.powersave 2
+        echo "Wi-Fi autoconnect enabled with unlimited retries and power saving disabled."
+    fi
+fi
+
+# Run Squeekboard as part of the graphical user session so touch users can
+# always recover access to text fields without attaching a physical keyboard.
+if command -v squeekboard &> /dev/null; then
+    KEYBOARD_SERVICE_NAME="simply-home-keyboard.service"
+    KEYBOARD_SERVICE_FILE="$HOME/.config/systemd/user/$KEYBOARD_SERVICE_NAME"
+    mkdir -p "$(dirname "$KEYBOARD_SERVICE_FILE")" "$HOME/.config/systemd/user/simply-home.service.d"
+    cat > "$KEYBOARD_SERVICE_FILE" <<'EOF'
+[Unit]
+Description=Simply Home on-screen keyboard
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Environment=DISPLAY=:0
+Environment=WAYLAND_DISPLAY=wayland-0
+ExecStart=/usr/bin/squeekboard
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=default.target
+EOF
+    cat > "$HOME/.config/systemd/user/simply-home.service.d/keyboard.conf" <<EOF
+[Unit]
+Wants=$KEYBOARD_SERVICE_NAME
+After=$KEYBOARD_SERVICE_NAME
+EOF
+    systemctl --user daemon-reload
+    systemctl --user enable --now "$KEYBOARD_SERVICE_NAME"
+    echo "On-screen keyboard service enabled."
+fi
+
 # Create the systemd user service
 echo -e "\nCreating systemd user service..."
 
